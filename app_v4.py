@@ -7,7 +7,7 @@ st.set_page_config(
     page_title="TogetheSpace v0.4 — High Concurrency Hub", page_icon="⚡", layout="wide"
 )
 
-DATABASE_URL = os.getenv("DATABASE_URL", "postgresql://user:password@host:port/dbname")
+DATABASE_URL = os.getenv("DATABASE_URL", "postgresql://postgres:/%/^vAPNQ7?t@7R@db.misgnchymprfkgxvrxqm.supabase.co:5432/postgres")
 
 @st.cache_resource
 def get_db_engine():
