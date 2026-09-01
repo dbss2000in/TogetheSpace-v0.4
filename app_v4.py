@@ -96,7 +96,7 @@ else:
           st.info('No posts found in the datasheet yet. Use the Publish tab to create your first card!')
         else:
           for idx, row in df_feed.iterrows():
-            likes_count = row['likes'] if row['likes'] is not None else 0
+            likes_count = row['likes'] if 'likes' in row and pd.notna(row['likes']) else 0
             st.markdown(f"""
                 <div class="sea-green-card">
                     <h4 style="color: #1b5e20; margin-bottom: 5px;">{row['title']}</h4>
@@ -112,8 +112,8 @@ else:
               if st.button(f'❤️ Like ({likes_count})', key=f'like_{row["id"]}'):
                 with engine.begin() as conn:
                   conn.execute(
-                      text('UPDATE togethespace_v4_records SET likes = likes + 1 WHERE id = :id'),
-                      {'id': row['id']}
+                      text('UPDATE togethespace_v4_records SET likes = COALESCE(likes, 0) + 1 WHERE id = :id'),
+                      {'id': int(row['id'])}
                   )
                 st.rerun()
       except Exception as e:
