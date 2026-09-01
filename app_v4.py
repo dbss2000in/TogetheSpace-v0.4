@@ -94,10 +94,10 @@ else:
             st.markdown('### 📋 Resident & Member Directory Datasheet (v0.3 Migration)')
             try:
                 with engine.connect() as conn:
-                    df_dir = pd.read_sql(text('SELECT * FROM togethespace_v4_directory ORDER BY full_name ASC;'), con=conn)
+                    df_dir = pd.read_sql(text('SELECT * FROM togethespace_v4_directory ORDER BY "Full Name" ASC;'), con=conn)
                 
                 if df_dir.empty:
-                    st.info('No records found in the directory datasheet yet. Use the "Add Member / Post" tab to add entries.')
+                    st.info('No records found in the directory datasheet yet. Use the Supabase Table Editor to import your v0.3 CSV.')
                 else:
                     search_query = st.text_input('🔍 Search Directory by Name, Address, or Medical Notes', '')
                     if search_query:
@@ -105,39 +105,39 @@ else:
                         df_dir = df_dir[mask]
 
                     for idx, row in df_dir.iterrows():
-                        fav_badge = '⭐ [Favorite]' if row.get('is_favorite') else ''
-                        map_url = f"https://www.google.com/maps/search/?api=1&query={urllib.parse.quote(str(row.get('address', '')))}"
+                        fav_badge = '⭐ [Favorite]' if row.get('Is Favorite') else ''
+                        map_url = f"https://www.google.com/maps/search/?api=1&query={urllib.parse.quote(str(row.get('Address', '')))}"
                         
                         st.markdown(f"""
                             <div class="sea-green-card">
-                                <h3 style="color: #1b5e20; margin-bottom: 2px;">{row.get('full_name')} {fav_badge}</h3>
+                                <h3 style="color: #1b5e20; margin-bottom: 2px;">{row.get('Full Name')} {fav_badge}</h3>
                                 <p style="color: #4f5d54; font-size: 0.95em; margin-bottom: 10px;">
-                                    <b>Bio:</b> {row.get('bio') or 'N/A'}
+                                    <b>Bio:</b> {row.get('Bio') or 'N/A'}
                                 </p>
                                 <hr style="margin: 8px 0; border-color: #c8e6c9;">
                                 <p style="font-size: 0.9em; margin: 4px 0;">
-                                    📍 <b>Address:</b> <a href="{map_url}" target="_blank">{row.get('address')} (View on Map)</a><br>
-                                    📞 <b>Phone:</b> <a href="tel:{row.get('phone_number')}">{row.get('phone_number')}</a> | 
-                                    💬 <b>WhatsApp Chat:</b> <a href="https://wa.me/{row.get('whatsapp_chat')}" target="_blank">Open Chat</a> | 
-                                    📞 <b>WhatsApp Call:</b> <a href="tel:{row.get('whatsapp_call')}">{row.get('whatsapp_call')}</a><br>
-                                    ✉️ <b>Email:</b> <a href="mailto:{row.get('email')}">{row.get('email')}</a> | 
-                                    🌐 <b>Website:</b> <a href="{row.get('website')}" target="_blank">{row.get('website')}</a>
+                                    📍 <b>Address:</b> <a href="{map_url}" target="_blank">{row.get('Address')} (View on Map)</a><br>
+                                    📞 <b>Phone:</b> <a href="tel:{row.get('Phone Number')}">{row.get('Phone Number')}</a> | 
+                                    💬 <b>WhatsApp Chat:</b> <a href="https://wa.me/{row.get('WhatsApp Chat')}" target="_blank">Open Chat</a> | 
+                                    📞 <b>WhatsApp Call:</b> <a href="tel:{row.get('WhatsApp Call')}">{row.get('WhatsApp Call')}</a><br>
+                                    ✉️ <b>Email:</b> <a href="mailto:{row.get('Email')}">{row.get('Email')}</a> | 
+                                    🌐 <b>Website:</b> <a href="{row.get('Website')}" target="_blank">{row.get('Website')}</a>
                                 </p>
                                 <p style="font-size: 0.9em; margin: 4px 0;">
-                                    📸 <b>Instagram:</b> <a href="{row.get('instagram')}" target="_blank">Profile</a> | 
-                                    📘 <b>Facebook:</b> <a href="{row.get('facebook')}" target="_blank">Profile</a> | 
-                                    🐦 <b>Twitter:</b> <a href="{row.get('twitter')}" target="_blank">Profile</a>
+                                    📸 <b>Instagram:</b> <a href="{row.get('Instagram')}" target="_blank">Profile</a> | 
+                                    📘 <b>Facebook:</b> <a href="{row.get('Facebook')}" target="_blank">Profile</a> | 
+                                    🐦 <b>Twitter:</b> <a href="{row.get('Twitter')}" target="_blank">Profile</a>
                                 </p>
                                 <p style="font-size: 0.9em; margin: 4px 0; background: #ffffff; padding: 8px; border-radius: 6px;">
-                                    🩸 <b>Blood Group:</b> {row.get('blood_group')} | 
-                                    ⚠️ <b>Allergies:</b> {row.get('allergies')} | 
-                                    🩺 <b>Conditions:</b> {row.get('medical_conditions')} | 
-                                    💊 <b>Medications:</b> {row.get('medications')}
+                                    🩸 <b>Blood Group:</b> {row.get('Blood Group')} | 
+                                    ⚠️ <b>Allergies:</b> {row.get('Allergies')} | 
+                                    🩺 <b>Conditions:</b> {row.get('Medical Conditions')} | 
+                                    💊 <b>Medications:</b> {row.get('Medications')}
                                 </p>
                                 <p style="font-size: 0.9em; margin: 4px 0;">
-                                    🚨 <b>Emergency Contact:</b> {row.get('emergency_contact_name')} ({row.get('emergency_contact_relationship')}) — <a href="tel:{row.get('emergency_contact_phone')}">{row.get('emergency_contact_phone')}</a><br>
-                                    🎂 <b>Birthday:</b> {row.get('birthday')} | 🌍 <b>Timezone:</b> {row.get('timezone')}<br>
-                                    📝 <b>Notes:</b> {row.get('notes')}
+                                    🚨 <b>Emergency Contact:</b> {row.get('Emergency Contact Name')} ({row.get('Emergency Contact Relationship')}) — <a href="tel:{row.get('Emergency Contact Phone')}">{row.get('Emergency Contact Phone')}</a><br>
+                                    🎂 <b>Birthday:</b> {row.get('Birthday')} | 🌍 <b>Timezone:</b> {row.get('Timezone')}<br>
+                                    📝 <b>Notes:</b> {row.get('Notes')}
                                 </p>
                             </div>
                         """, unsafe_allow_html=True)
@@ -292,15 +292,15 @@ else:
                 col1, col2 = st.columns(2)
                 with col1:
                     full_name = st.text_input('Full Name *')
-                    address = st.text_input('Address (for Google Maps pointing)')
+                    address = st.text_input('Address')
                     phone_number = st.text_input('Phone Number')
-                    whatsapp_call = st.text_input('WhatsApp Call Number')
-                    whatsapp_chat = st.text_input('WhatsApp Chat ID/Number')
-                    instagram = st.text_input('Instagram URL')
-                    facebook = st.text_input('Facebook URL')
-                    twitter = st.text_input('Twitter URL')
-                    email = st.text_input('Email Address')
-                    website = st.text_input('Website URL')
+                    whatsapp_call = st.text_input('WhatsApp Call')
+                    whatsapp_chat = st.text_input('WhatsApp Chat')
+                    instagram = st.text_input('Instagram')
+                    facebook = st.text_input('Facebook')
+                    twitter = st.text_input('Twitter')
+                    email = st.text_input('Email')
+                    website = st.text_input('Website')
                     blood_group = st.text_input('Blood Group')
                 with col2:
                     allergies = st.text_input('Allergies')
@@ -309,11 +309,11 @@ else:
                     emergency_contact_name = st.text_input('Emergency Contact Name')
                     emergency_contact_relationship = st.text_input('Emergency Contact Relationship')
                     emergency_contact_phone = st.text_input('Emergency Contact Phone')
-                    birthday = st.text_input('Birthday (e.g. DD-MM)')
-                    timezone = st.text_input('Timezone (e.g. UTC+5:30)')
+                    birthday = st.text_input('Birthday')
+                    timezone = st.text_input('Timezone')
                     notes = st.text_area('Notes')
-                    is_favorite = st.checkbox('Mark as Favorite Member ⭐')
-                    bio = st.text_area('Short Bio')
+                    is_favorite = st.checkbox('Is Favorite ⭐')
+                    bio = st.text_area('Bio')
 
                 submitted_dir = st.form_submit_button('Save Member to Directory')
                 if submitted_dir:
@@ -322,7 +322,7 @@ else:
                             conn.execute(
                                 text("""
                                     INSERT INTO togethespace_v4_directory 
-                                    (full_name, address, phone_number, whatsapp_call, whatsapp_chat, instagram, facebook, twitter, email, website, blood_group, allergies, medical_conditions, medications, emergency_contact_name, emergency_contact_relationship, emergency_contact_phone, birthday, timezone, notes, is_favorite, bio)
+                                    ("Full Name", "Address", "Phone Number", "WhatsApp Call", "WhatsApp Chat", "Instagram", "Facebook", "Twitter", "Email", "Website", "Blood Group", "Allergies", "Medical Conditions", "Medications", "Emergency Contact Name", "Emergency Contact Relationship", "Emergency Contact Phone", "Birthday", "Timezone", "Notes", "Is Favorite", "Bio")
                                     VALUES 
                                     (:full_name, :address, :phone_number, :whatsapp_call, :whatsapp_chat, :instagram, :facebook, :twitter, :email, :website, :blood_group, :allergies, :medical_conditions, :medications, :emergency_contact_name, :emergency_contact_relationship, :emergency_contact_phone, :birthday, :timezone, :notes, :is_favorite, :bio)
                                 """),
