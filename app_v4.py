@@ -187,34 +187,46 @@ else:
       except Exception as e:
         st.warning(f'Chat loading error: {e}')
 
-    # 4. SOCIAL MEDIA & COMMUNICATIONS TAB
+    # 4. SOCIAL MEDIA & COMMUNICATIONS TAB (Explicitly Ungrouped / Individual Channels)
     with tab_social:
-      st.markdown('### 🌐 Social Media & Communication Channels')
-      st.markdown('Connect with our community across official networks and communication platforms:')
+      st.markdown('### 🌐 Specific Social Media & Communication Channels')
+      st.markdown('Connect directly with our community and official networks across all individual platforms:')
       
-      col_s1, col_s2, col_s3 = st.columns(3)
+      col_s1, col_s2 = st.columns(2)
       with col_s1:
         st.markdown("""
-            <div class="sea-green-card" style="text-align: center;">
-                <h4>📢 Official Portal</h4>
-                <p>Access announcements, schedules, and community guidelines.</p>
-                <a href="https://supabase.com" target="_blank" style="color: #2e8b57; font-weight: bold;">Visit Portal &rarr;</a>
+            <div class="sea-green-card">
+                <h4>💬 WhatsApp Community</h4>
+                <p>Instant messaging, alerts, and resident group updates.</p>
+                <a href="https://whatsapp.com" target="_blank" style="color: #2e8b57; font-weight: bold;">Open WhatsApp Group &rarr;</a>
+            </div>
+            <div class="sea-green-card">
+                <h4>📘 Facebook Group</h4>
+                <p>Community discussions, photo sharing, and neighborhood events.</p>
+                <a href="https://facebook.com" target="_blank" style="color: #2e8b57; font-weight: bold;">Visit Facebook Page &rarr;</a>
+            </div>
+            <div class="sea-green-card">
+                <h4>📸 Instagram Handle</h4>
+                <p>Visual highlights, stories, and community snapshots.</p>
+                <a href="https://instagram.com" target="_blank" style="color: #2e8b57; font-weight: bold;">Follow on Instagram &rarr;</a>
             </div>
         """, unsafe_allow_html=True)
       with col_s2:
         st.markdown("""
-            <div class="sea-green-card" style="text-align: center;">
-                <h4>💬 Community Broadcast</h4>
-                <p>Join our secure messaging channels and discussion groups.</p>
-                <a href="https://whatsapp.com" target="_blank" style="color: #2e8b57; font-weight: bold;">Open Channel &rarr;</a>
+            <div class="sea-green-card">
+                <h4>💼 LinkedIn Network</h4>
+                <p>Professional updates, networking, and institutional announcements.</p>
+                <a href="https://linkedin.com" target="_blank" style="color: #2e8b57; font-weight: bold;">Connect on LinkedIn &rarr;</a>
             </div>
-        """, unsafe_allow_html=True)
-      with col_s3:
-        st.markdown("""
-            <div class="sea-green-card" style="text-align: center;">
-                <h4>📘 Network Hub</h4>
-                <p>Connect with members and share updates across the network.</p>
-                <a href="https://github.com" target="_blank" style="color: #2e8b57; font-weight: bold;">View Repository &rarr;</a>
+            <div class="sea-green-card">
+                <h4>🌐 Official Web Portal</h4>
+                <p>Main database hub, records, notices, and high-concurrency app interface.</p>
+                <a href="https://supabase.com" target="_blank" style="color: #2e8b57; font-weight: bold;">Access Portal &rarr;</a>
+            </div>
+            <div class="sea-green-card">
+                <h4>💻 GitHub Repository</h4>
+                <p>Source code versioning, releases, and technical documentation.</p>
+                <a href="https://github.com" target="_blank" style="color: #2e8b57; font-weight: bold;">View Source Code &rarr;</a>
             </div>
         """, unsafe_allow_html=True)
 
