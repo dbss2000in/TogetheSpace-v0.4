@@ -1,3 +1,4 @@
+import urllib.parse
 import pandas as pd
 import streamlit as st
 from sqlalchemy import create_engine, text
@@ -79,23 +80,79 @@ else:
       conn.execute(text('SELECT 1;'))
 
     # --- NAVIGATION TABS ---
-    tab_feed, tab_notices, tab_chat, tab_social, tab_add = st.tabs([
+    tab_directory, tab_feed, tab_notices, tab_chat, tab_social, tab_add = st.tabs([
+        '📋 Member Directory Datasheet',
         '🏡 Feed & Sea Green Cards',
         '📢 Notices & Alerts',
         '💬 Community Chat',
-        '🌐 Social & Communications',
-        '➕ Publish New Post'
+        '🌐 Social Channels',
+        '➕ Add Member / Post'
     ])
 
-    # 1. FEED & SEA GREEN CARDS TAB
+    # 1. COMPREHENSIVE MEMBER DIRECTORY DATASHEET TAB
+    with tab_directory:
+      st.markdown('### 📋 Resident & Member Directory Datasheet (v0.3 Migration)')
+      try:
+        with engine.connect() as conn:
+          df_dir = pd.read_sql(text('SELECT * FROM togethespace_v4_directory ORDER BY full_name ASC;'), con=conn)
+        
+        if df_dir.empty:
+          st.info('No records found in the directory datasheet yet. Use the "Add Member / Post" tab to add entries.')
+        else:
+          search_query = st.text_input('🔍 Search Directory by Name, Address, or Medical Notes', '')
+          if search_query:
+            mask = df_dir.apply(lambda row: row.astype(str).str.contains(search_query, case=False).any(), axis=1)
+            df_dir = df_dir[mask]
+
+          for idx, row in df_dir.iterrows():
+            fav_badge = '⭐ [Favorite]' if row.get('is_favorite') else ''
+            map_url = f"https://www.google.com/maps/search/?api=1&query={urllib.parse.quote(str(row.get('address', '')))}"
+            
+            st.markdown(f"""
+                <div class="sea-green-card">
+                    <h3 style="color: #1b5e20; margin-bottom: 2px;">{row.get('full_name')} {fav_badge}</h3>
+                    <p style="color: #4f5d54; font-size: 0.95em; margin-bottom: 10px;">
+                        <b>Bio:</b> {row.get('bio') or 'N/A'}
+                    </p>
+                    <hr style="margin: 8px 0; border-color: #c8e6c9;">
+                    <p style="font-size: 0.9em; margin: 4px 0;">
+                        📍 <b>Address:</b> <a href="{map_url}" target="_blank">{row.get('address')} (View on Map)</a><br>
+                        📞 <b>Phone:</b> <a href="tel:{row.get('phone_number')}">{row.get('phone_number')}</a> | 
+                        💬 <b>WhatsApp Chat:</b> <a href="https://wa.me/{row.get('whatsapp_chat')}" target="_blank">Open Chat</a> | 
+                        📞 <b>WhatsApp Call:</b> <a href="tel:{row.get('whatsapp_call')}">{row.get('whatsapp_call')}</a><br>
+                        ✉️ <b>Email:</b> <a href="mailto:{row.get('email')}">{row.get('email')}</a> | 
+                        🌐 <b>Website:</b> <a href="{row.get('website')}" target="_blank">{row.get('website')}</a>
+                    </p>
+                    <p style="font-size: 0.9em; margin: 4px 0;">
+                        📸 <b>Instagram:</b> <a href="{row.get('instagram')}" target="_blank">Profile</a> | 
+                        📘 <b>Facebook:</b> <a href="{row.get('facebook')}" target="_blank">Profile</a> | 
+                        🐦 <b>Twitter:</b> <a href="{row.get('twitter')}" target="_blank">Profile</a>
+                    </p>
+                    <p style="font-size: 0.9em; margin: 4px 0; background: #ffffff; padding: 8px; border-radius: 6px;">
+                        🩸 <b>Blood Group:</b> {row.get('blood_group')} | 
+                        ⚠️ <b>Allergies:</b> {row.get('allergies')} | 
+                        🩺 <b>Conditions:</b> {row.get('medical_conditions')} | 
+                        💊 <b>Medications:</b> {row.get('medications')}
+                    </p>
+                    <p style="font-size: 0.9em; margin: 4px 0;">
+                        🚨 <b>Emergency Contact:</b> {row.get('emergency_contact_name')} ({row.get('emergency_contact_relationship')}) — <a href="tel:{row.get('emergency_contact_phone')}">{row.get('emergency_contact_phone')}</a><br>
+                        🎂 <b>Birthday:</b> {row.get('birthday')} | 🌍 <b>Timezone:</b> {row.get('timezone')}<br>
+                        📝 <b>Notes:</b> {row.get('notes')}
+                    </p>
+                </div>
+            """, unsafe_allow_html=True)
+      except Exception as e:
+        st.warning(f'Directory table not found or empty. Please run the SQL migration script. Details: {e}')
+
+    # 2. FEED & SEA GREEN CARDS TAB
     with tab_feed:
-      st.markdown('### 🌊 Community Feed & Datasheet Records')
+      st.markdown('### 🌊 Community Feed & Posts')
       try:
         with engine.connect() as conn:
           df_feed = pd.read_sql(text('SELECT * FROM togethespace_v4_records ORDER BY created_at DESC;'), con=conn)
         
         if df_feed.empty:
-          st.info('No posts found in the datasheet yet. Use the Publish tab to create your first card!')
+          st.info('No posts found in the feed yet.')
         else:
           for idx, row in df_feed.iterrows():
             likes_count = row['likes'] if 'likes' in row and pd.notna(row['likes']) else 0
@@ -121,7 +178,7 @@ else:
       except Exception as e:
         st.warning(f'Unable to load feed records. Details: {e}')
 
-    # 2. NOTICES TAB
+    # 3. NOTICES TAB
     with tab_notices:
       st.markdown('### 📢 Official Notices & Announcements')
       try:
@@ -148,7 +205,7 @@ else:
       except Exception as e:
         st.warning(f'Could not load notices: {e}')
 
-    # 3. COMMUNITY CHAT TAB
+    # 4. COMMUNITY CHAT TAB
     with tab_chat:
       st.markdown('### 💬 Real-Time Community Chat Facility')
       
@@ -187,70 +244,102 @@ else:
       except Exception as e:
         st.warning(f'Chat loading error: {e}')
 
-    # 4. SOCIAL MEDIA & COMMUNICATIONS TAB (Explicitly Ungrouped / Individual Channels)
+    # 5. SOCIAL MEDIA CHANNELS TAB
     with tab_social:
       st.markdown('### 🌐 Specific Social Media & Communication Channels')
-      st.markdown('Connect directly with our community and official networks across all individual platforms:')
-      
       col_s1, col_s2 = st.columns(2)
       with col_s1:
         st.markdown("""
             <div class="sea-green-card">
                 <h4>💬 WhatsApp Community</h4>
-                <p>Instant messaging, alerts, and resident group updates.</p>
-                <a href="https://whatsapp.com" target="_blank" style="color: #2e8b57; font-weight: bold;">Open WhatsApp Group &rarr;</a>
+                <p>Instant messaging and community group broadcasts.</p>
+                <a href="https://whatsapp.com" target="_blank" style="color: #2e8b57; font-weight: bold;">Open WhatsApp &rarr;</a>
             </div>
             <div class="sea-green-card">
                 <h4>📘 Facebook Group</h4>
-                <p>Community discussions, photo sharing, and neighborhood events.</p>
-                <a href="https://facebook.com" target="_blank" style="color: #2e8b57; font-weight: bold;">Visit Facebook Page &rarr;</a>
+                <p>Neighborhood discussions and event photo sharing.</p>
+                <a href="https://facebook.com" target="_blank" style="color: #2e8b57; font-weight: bold;">Visit Facebook &rarr;</a>
             </div>
             <div class="sea-green-card">
                 <h4>📸 Instagram Handle</h4>
-                <p>Visual highlights, stories, and community snapshots.</p>
-                <a href="https://instagram.com" target="_blank" style="color: #2e8b57; font-weight: bold;">Follow on Instagram &rarr;</a>
+                <p>Community stories and highlights.</p>
+                <a href="https://instagram.com" target="_blank" style="color: #2e8b57; font-weight: bold;">Follow Instagram &rarr;</a>
             </div>
         """, unsafe_allow_html=True)
       with col_s2:
         st.markdown("""
             <div class="sea-green-card">
                 <h4>💼 LinkedIn Network</h4>
-                <p>Professional updates, networking, and institutional announcements.</p>
-                <a href="https://linkedin.com" target="_blank" style="color: #2e8b57; font-weight: bold;">Connect on LinkedIn &rarr;</a>
+                <p>Professional updates and institutional notices.</p>
+                <a href="https://linkedin.com" target="_blank" style="color: #2e8b57; font-weight: bold;">Connect LinkedIn &rarr;</a>
             </div>
             <div class="sea-green-card">
                 <h4>🌐 Official Web Portal</h4>
-                <p>Main database hub, records, notices, and high-concurrency app interface.</p>
-                <a href="https://supabase.com" target="_blank" style="color: #2e8b57; font-weight: bold;">Access Portal &rarr;</a>
+                <p>Primary secure application hub.</p>
+                <a href="https://supabase.com" target="_blank" style="color: #2e8b57; font-weight: bold;">Open Portal &rarr;</a>
             </div>
             <div class="sea-green-card">
                 <h4>💻 GitHub Repository</h4>
-                <p>Source code versioning, releases, and technical documentation.</p>
-                <a href="https://github.com" target="_blank" style="color: #2e8b57; font-weight: bold;">View Source Code &rarr;</a>
+                <p>Source code versioning and release management.</p>
+                <a href="https://github.com" target="_blank" style="color: #2e8b57; font-weight: bold;">View Code &rarr;</a>
             </div>
         """, unsafe_allow_html=True)
 
-    # 5. PUBLISH NEW POST TAB
+    # 6. ADD MEMBER / POST TAB
     with tab_add:
-      st.markdown('### ➕ Publish a New Post to the Datasheet')
-      with st.form('publish_form', clear_on_submit=True):
-        new_title = st.text_input('Title / Subject')
-        new_category = st.selectbox('Category', ['General', 'Notice', 'Announcement', 'Community Update', 'Discussion'])
-        new_author = st.text_input('Author Name')
-        new_content = st.text_area('Content / Details')
-        
-        submitted = st.form_submit_button('Publish to Datasheet')
-        if submitted:
-          if new_title and new_content:
+      st.markdown('### ➕ Add New Resident / Member to Directory')
+      with st.form('dir_add_form', clear_on_submit=True):
+        col1, col2 = st.columns(2)
+        with col1:
+          full_name = st.text_input('Full Name *')
+          address = st.text_input('Address (for Google Maps pointing)')
+          phone_number = st.text_input('Phone Number')
+          whatsapp_call = st.text_input('WhatsApp Call Number')
+          whatsapp_chat = st.text_input('WhatsApp Chat ID/Number')
+          instagram = st.text_input('Instagram URL')
+          facebook = st.text_input('Facebook URL')
+          twitter = st.text_input('Twitter URL')
+          email = st.text_input('Email Address')
+          website = st.text_input('Website URL')
+          blood_group = st.text_input('Blood Group')
+        with col2:
+          allergies = st.text_input('Allergies')
+          medical_conditions = st.text_input('Medical Conditions')
+          medications = st.text_input('Medications')
+          emergency_contact_name = st.text_input('Emergency Contact Name')
+          emergency_contact_relationship = st.text_input('Emergency Contact Relationship')
+          emergency_contact_phone = st.text_input('Emergency Contact Phone')
+          birthday = st.text_input('Birthday (e.g. DD-MM)')
+          timezone = st.text_input('Timezone (e.g. UTC+5:30)')
+          notes = st.text_area('Notes')
+          is_favorite = st.checkbox('Mark as Favorite Member ⭐')
+          bio = st.text_area('Short Bio')
+
+        submitted_dir = st.form_submit_button('Save Member to Directory')
+        if submitted_dir:
+          if full_name:
             with engine.begin() as conn:
               conn.execute(
-                  text('INSERT INTO togethespace_v4_records (title, category, content, author, likes) VALUES (:title, :category, :content, :author, 0)'),
-                  {'title': new_title, 'category': new_category, 'content': new_content, 'author': new_author}
+                  text("""
+                      INSERT INTO togethespace_v4_directory 
+                      (full_name, address, phone_number, whatsapp_call, whatsapp_chat, instagram, facebook, twitter, email, website, blood_group, allergies, medical_conditions, medications, emergency_contact_name, emergency_contact_relationship, emergency_contact_phone, birthday, timezone, notes, is_favorite, bio)
+                      VALUES 
+                      (:full_name, :address, :phone_number, :whatsapp_call, :whatsapp_chat, :instagram, :facebook, :twitter, :email, :website, :blood_group, :allergies, :medical_conditions, :medications, :emergency_contact_name, :emergency_contact_relationship, :emergency_contact_phone, :birthday, :timezone, :notes, :is_favorite, :bio)
+                  """),
+                  {
+                      'full_name': full_name, 'address': address, 'phone_number': phone_number,
+                      'whatsapp_call': whatsapp_call, 'whatsapp_chat': whatsapp_chat, 'instagram': instagram,
+                      'facebook': facebook, 'twitter': twitter, 'email': email, 'website': website,
+                      'blood_group': blood_group, 'allergies': allergies, 'medical_conditions': medical_conditions,
+                      'medications': medications, 'emergency_contact_name': emergency_contact_name,
+                      'emergency_contact_relationship': emergency_contact_relationship, 'emergency_contact_phone': emergency_contact_phone,
+                      'birthday': birthday, 'timezone': timezone, 'notes': notes, 'is_favorite': is_favorite, 'bio': bio
+                  }
               )
-            st.success('Post successfully published with sea green card formatting!')
+            st.success('Member successfully added to the high-concurrency directory datasheet!')
             st.rerun()
           else:
-            st.warning('Please provide both a Title and Content.')
+            st.warning('Please provide at least the Full Name.')
 
   except Exception as e:
     st.error(f'Database connection or query failed: {e}')
