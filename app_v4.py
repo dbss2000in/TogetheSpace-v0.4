@@ -9,10 +9,11 @@ st.set_page_config(
     layout='wide',
 )
 
-# --- SCALABLE POSTGRESQL CONNECTION POOLING ---
+# --- SUPABASE CONNECTION POOLER (HIGH-CONCURRENCY) ---
+# Using Supabase's regional pooler URL bypasses direct DNS issues on cloud hosts.
 DATABASE_URL = os.getenv(
     'DATABASE_URL',
-    'postgresql://postgres:TogetheSpace2026Secure@db.misgnchymprfkgxvrxqm.supabase.co:5432/postgres',
+    'postgresql://postgres.misgnchymprfkgxvrxqm:TogetheSpace2026Secure@aws-0-ap-southeast-1.pooler.supabase.com:6543/postgres',
 )
 
 st.title('⚡ TogetheSpace v0.4 (High-Concurrency Edition)')
@@ -28,6 +29,6 @@ try:
     df_test = pd.read_sql('SELECT 1 as status;', con=conn)
   
   if not df_test.empty:
-    st.success('Database connection pool is active and stable.')
+    st.success('Database connection pool is active and stable via Supabase Pooler.')
 except Exception as e:
-  st.error(f'Connection failed. Details: {e}')
+    st.error(f'Connection failed. Details: {e}')
