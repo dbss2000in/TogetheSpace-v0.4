@@ -92,20 +92,33 @@ else:
         # 1. COMPREHENSIVE MEMBER DIRECTORY DATASHEET TAB
         with tab_directory:
             st.markdown('### 📋 Resident & Member Directory Datasheet (v0.3 Migration)')
+            
+            search_query = st.text_input('🔍 Search Directory by Name, Address, Phone, or Notes', '')
+            
             try:
                 with engine.connect() as conn:
-                    df_dir = pd.read_sql(text('SELECT * FROM togethespace_v4_directory ORDER BY "Full Name" ASC;'), con=conn)
+                    if search_query:
+                        query = text("""
+                            SELECT * FROM togethespace_v4_directory 
+                            WHERE "Full Name" ILIKE :q 
+                               OR "Address" ILIKE :q 
+                               OR "Phone Number" ILIKE :q 
+                               OR "Notes" ILIKE :q
+                               OR "Medical Conditions" ILIKE :q
+                            ORDER BY "Full Name" ASC;
+                        """)
+                        df_dir = pd.read_sql(query, con=conn, params={"q": f"%{search_query}%"})
+                    else:
+                        # Load first 100 records by default for speed, use search to find specific members
+                        query = text('SELECT * FROM togethespace_v4_directory ORDER BY "Full Name" ASC LIMIT 100;')
+                        df_dir = pd.read_sql(query, con=conn)
+                        st.info('💡 Showing the first 100 records for fast performance. Type a name or keyword above to search through all 5,760 records instantly.')
                 
                 if df_dir.empty:
-                    st.info('No records found in the directory datasheet yet. Use the Supabase Table Editor to import your v0.3 CSV.')
+                    st.warning('No matching records found.')
                 else:
-                    search_query = st.text_input('🔍 Search Directory by Name, Address, or Medical Notes', '')
-                    if search_query:
-                        mask = df_dir.apply(lambda row: row.astype(str).str.contains(search_query, case=False).any(), axis=1)
-                        df_dir = df_dir[mask]
-
                     for idx, row in df_dir.iterrows():
-                        fav_badge = '⭐ [Favorite]' if row.get('Is Favorite') else ''
+                        fav_badge = '⭐ [Favorite]' if str(row.get('Is Favorite')).lower() in ['true', '1', 'yes'] else ''
                         map_url = f"https://www.google.com/maps/search/?api=1&query={urllib.parse.quote(str(row.get('Address', '')))}"
                         
                         st.markdown(f"""
@@ -142,8 +155,7 @@ else:
                             </div>
                         """, unsafe_allow_html=True)
             except Exception as e:
-                st.warning(f'Directory table not found or empty. Please run the SQL migration script. Details: {e}')
-
+                st.warning(f'Directory loading failed. Details: {e}')
         # 2. FEED & SEA GREEN CARDS TAB
         with tab_feed:
             st.markdown('### 🌊 Community Feed & Posts')
