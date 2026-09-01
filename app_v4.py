@@ -91,7 +91,9 @@ else:
     with tab_feed:
       st.markdown('### 🌊 Community Feed & Datasheet Records')
       try:
-        df_feed = pd.read_sql('SELECT * FROM togethespace_v4_records ORDER BY created_at DESC;', con=engine)
+        with engine.connect() as conn:
+          df_feed = pd.read_sql(text('SELECT * FROM togethespace_v4_records ORDER BY created_at DESC;'), con=conn)
+        
         if df_feed.empty:
           st.info('No posts found in the datasheet yet. Use the Publish tab to create your first card!')
         else:
@@ -123,7 +125,13 @@ else:
     with tab_notices:
       st.markdown('### 📢 Official Notices & Announcements')
       try:
-        df_notices = pd.read_sql("SELECT * FROM togethespace_v4_records WHERE category ILIKE '%Notice%' OR category ILIKE '%Announcement%' ORDER BY created_at DESC;", con=engine)
+        with engine.connect() as conn:
+          df_notices = pd.read_sql(
+              text("SELECT * FROM togethespace_v4_records WHERE category ILIKE :cat1 OR category ILIKE :cat2 ORDER BY created_at DESC;"),
+              con=conn,
+              params={"cat1": "%Notice%", "cat2": "%Announcement%"}
+          )
+        
         if df_notices.empty:
           st.info('No active notices posted at this time.')
         else:
@@ -163,7 +171,9 @@ else:
       st.markdown('---')
       st.markdown('#### Recent Chat History')
       try:
-        df_chat = pd.read_sql('SELECT * FROM togethespace_v4_chat ORDER BY created_at DESC LIMIT 50;', con=engine)
+        with engine.connect() as conn:
+          df_chat = pd.read_sql(text('SELECT * FROM togethespace_v4_chat ORDER BY created_at DESC LIMIT 50;'), con=conn)
+        
         if df_chat.empty:
           st.info('No chat messages yet. Start the conversation above!')
         else:
