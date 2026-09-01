@@ -109,7 +109,6 @@ else:
                         """)
                         df_dir = pd.read_sql(query, con=conn, params={"q": f"%{search_query}%"})
                     else:
-                        # Load first 100 records by default for speed, use search to find specific members
                         query = text('SELECT * FROM togethespace_v4_directory ORDER BY "Full Name" ASC LIMIT 100;')
                         df_dir = pd.read_sql(query, con=conn)
                         st.info('💡 Showing the first 100 records for fast performance. Type a name or keyword above to search through all 5,760 records instantly.')
@@ -156,9 +155,34 @@ else:
                         """, unsafe_allow_html=True)
             except Exception as e:
                 st.warning(f'Directory loading failed. Details: {e}')
-        # 2. FEED & SEA GREEN CARDS TAB
+
+        # 2. FEED & SEA GREEN CARDS TAB (With Inline Posting Form)
         with tab_feed:
             st.markdown('### 🌊 Community Feed & Posts')
+            
+            # Inline Publish Expander right inside the feed view
+            with st.expander('➕ Publish a New Community Post', expanded=True):
+                with st.form('inline_feed_form', clear_on_submit=True):
+                    new_title = st.text_input('Title / Subject')
+                    new_category = st.selectbox('Category', ['General', 'Notice', 'Announcement', 'Community Update', 'Discussion'])
+                    new_author = st.text_input('Author Name')
+                    new_content = st.text_area('Content / Details')
+                    
+                    submitted = st.form_submit_button('Publish Post')
+                    if submitted:
+                        if new_title and new_content:
+                            with engine.begin() as conn:
+                                conn.execute(
+                                    text('INSERT INTO togethespace_v4_records (title, category, content, author, likes) VALUES (:title, :category, :content, :author, 0)'),
+                                    {'title': new_title, 'category': new_category, 'content': new_content, 'author': new_author}
+                                )
+                            st.success('Post successfully published!')
+                            st.rerun()
+                        else:
+                            st.warning('Please provide both a Title and Content.')
+
+            st.markdown('---')
+            st.markdown('#### Recent Feed Posts')
             try:
                 with engine.connect() as conn:
                     df_feed = pd.read_sql(text('SELECT * FROM togethespace_v4_records ORDER BY created_at DESC;'), con=conn)
@@ -297,7 +321,7 @@ else:
                     </div>
                 """, unsafe_allow_html=True)
 
-        # 6. ADD MEMBER / POST TAB
+        # 6. ADD MEMBER / POST TAB (Dedicated Member Entry Form)
         with tab_add:
             st.markdown('### ➕ Add New Resident / Member to Directory')
             with st.form('dir_add_form', clear_on_submit=True):
