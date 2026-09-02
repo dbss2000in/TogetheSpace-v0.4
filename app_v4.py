@@ -88,13 +88,14 @@ else:
             conn.execute(text('SELECT 1;'))
 
         # --- NAVIGATION TABS ---
-        tab_directory, tab_feed, tab_notices, tab_chat, tab_social, tab_admin = st.tabs([
-            '📋 Member Directory Datasheet',
-            '🏡 Feed & Sea Green Cards',
-            '📢 Notices & Alerts',
-            '💬 Community Chat',
+        tab_directory, tab_feed, tab_notices, tab_chat, tab_social, tab_resident, tab_admin = st.tabs([
+            '📋 Member Directory',
+            '🏡 Community Feed',
+            '📢 Notices',
+            '💬 Chat',
             '🌐 Social Channels',
-            '🔐 Block Admin Portal'
+            '👤 Resident Portal',
+            '🔐 Admin Portal'
         ])
 
         # 1. COMPREHENSIVE MEMBER DIRECTORY DATASHEET TAB
@@ -148,13 +149,14 @@ else:
                     for idx, row in df_dir.iterrows():
                         fav_badge = '⭐ [Favorite]' if str(row.get('Is Favorite')).lower() in ['true', '1', 'yes'] else ''
                         org_badge = f"🏢 <b>Block:</b> {row.get('Organization')}" if row.get('Organization') else ''
+                        user_id_badge = f" | 👤 <b>User ID:</b> {row.get('User ID')}" if row.get('User ID') else ''
                         map_url = f"https://www.google.com/maps/search/?api=1&query={urllib.parse.quote(str(row.get('Address', '')))}"
                         
                         st.markdown(f"""
                             <div class="sea-green-card">
                                 <h3 style="color: #1b5e20; margin-bottom: 2px;">{row.get('Full Name')} {fav_badge}</h3>
                                 <p style="color: #4f5d54; font-size: 0.95em; margin-bottom: 10px;">
-                                    {org_badge} | <b>Bio:</b> {row.get('Bio') or 'N/A'}
+                                    {org_badge} {user_id_badge} | <b>Bio:</b> {row.get('Bio') or 'N/A'}
                                 </p>
                                 <hr style="margin: 8px 0; border-color: #c8e6c9;">
                                 <p style="font-size: 0.9em; margin: 4px 0;">
@@ -350,38 +352,119 @@ else:
                     </div>
                 """, unsafe_allow_html=True)
 
-        # 6. BLOCK ADMIN PORTAL TAB (Admin Controls: Notices, Post Deletion, Directory CRUD)
+        # 6. RESIDENT PORTAL TAB (Member Login & Password Change Requests)
+        with tab_resident:
+            st.markdown('### 👤 Resident Login & Profile Portal')
+            st.markdown('Log in using your assigned **User ID** and **Password** to view your resident profile and submit password change requests.')
+
+            with st.form('resident_login_form'):
+                r_uid = st.text_input('User ID')
+                r_pwd = st.text_input('Password', type='password')
+                r_login_btn = st.form_submit_button('Login to Resident Portal')
+
+            if r_login_btn:
+                if r_uid and r_pwd:
+                    with engine.connect() as conn:
+                        res_check = pd.read_sql(
+                            text('SELECT * FROM togethespace_v4_directory WHERE "User ID" = :uid AND "Password" = :pwd'),
+                            con=conn,
+                            params={'uid': r_uid, 'pwd': r_pwd}
+                        )
+                    if not res_check.empty:
+                        st.session_state['resident_logged'] = True
+                        st.session_state['resident_data'] = res_check.iloc[0].to_dict()
+                        st.success('Login successful!')
+                    else:
+                        st.error('Invalid User ID or Password.')
+                else:
+                    st.warning('Please enter both User ID and Password.')
+
+            if st.session_state.get('resident_logged'):
+                r = st.session_state['resident_data']
+                st.markdown(f"### Welcome, {r.get('Full Name')}! 🎉")
+                
+                st.markdown("""
+                    <div class="sea-green-card">
+                """, unsafe_allow_html=True)
+                st.write(f"**Block / Organization:** {r.get('Organization')}")
+                st.write(f"**Address:** {r.get('Address')}")
+                st.write(f"**Phone Number:** {r.get('Phone Number')}")
+                st.write(f"**Email:** {r.get('Email')}")
+                st.write(f"**Blood Group:** {r.get('Blood Group')} | **Allergies:** {r.get('Allergies')}")
+                st.markdown("</div>", unsafe_allow_html=True)
+
+                st.markdown('#### 🔑 Request Password Change')
+                with st.form('resident_pwd_req_form'):
+                    new_r_pwd = st.text_input('New Desired Password', type='password')
+                    req_submit = st.form_submit_button('Submit Password Change Request')
+                    if req_submit:
+                        if new_r_pwd:
+                            with engine.begin() as conn:
+                                conn.execute(
+                                    text('INSERT INTO togethespace_v4_password_requests (requested_by, target_userid, target_name, block, new_password, status) VALUES (:by, :target, :name, :block, :pwd, :status)'),
+                                    {
+                                        'by': f"Resident: {r.get('Full Name')}",
+                                        'target': str(r.get('User ID')),
+                                        'name': r.get('Full Name'),
+                                        'block': r.get('Organization', 'General'),
+                                        'pwd': new_r_pwd,
+                                        'status': 'Pending'
+                                    }
+                                )
+                            st.success('Password change request submitted successfully to your Block Admin for approval!')
+                        else:
+                            st.warning('Please enter a new password.')
+
+                if st.button('Logout'):
+                    st.session_state['resident_logged'] = False
+                    st.session_state.pop('resident_data', None)
+                    st.rerun()
+
+        # 7. BLOCK & MASTER ADMIN PORTAL TAB
         with tab_admin:
-            st.markdown('### 🔐 Block-Wise Administrator Portal')
-            st.markdown('Authenticate with your block credentials to manage community notices, delete posts, and modify directory records.')
+            st.markdown('### 🔐 Administrator Portal')
+            st.markdown('Authenticate with block credentials or Master Admin passcode to manage records, approve password requests, and review audit logs.')
             
             col_adm1, col_adm2 = st.columns(2)
             with col_adm1:
-                admin_block = st.selectbox('Select Block / Zone', ['Block A', 'Block B', 'Block C', 'Block AE', 'Master Admin'])
+                admin_block = st.selectbox('Select Role / Block', ['Block A', 'Block B', 'Block C', 'Block AE', 'Master Admin'])
             with col_adm2:
-                admin_pass = st.text_input('Admin Passcode', type='password')
+                admin_pass = st.text_input('Admin Passcode', type='password', key='admin_pass_input')
 
-            # Simple secure check (or configurable via secrets)
-            is_admin_logged = (admin_pass == 'TogetheSpace2026Secure' or admin_pass == 'admin')
+            block_passcodes = {
+                'Block A': 'BlockA2026!',
+                'Block B': 'BlockB2026!',
+                'Block C': 'BlockC2026!',
+                'Block AE': 'BlockAE2026!',
+                'Master Admin': 'Master2026!'
+            }
+
+            is_admin_logged = False
+            if admin_block in block_passcodes and admin_pass == block_passcodes[admin_block]:
+                is_admin_logged = True
+            elif admin_pass == 'admin':
+                is_admin_logged = True
 
             if not is_admin_logged and admin_pass != '':
-                st.error('❌ Invalid admin passcode.')
+                st.error('❌ Invalid passcode for the selected role.')
 
             if is_admin_logged:
-                st.success(f'🔓 Authenticated successfully as Administrator for **{admin_block}**!')
+                st.success(f'🔓 Authenticated successfully as **{admin_block}**!')
 
                 admin_action = st.radio('Select Admin Operation', [
-                    '📢 Create Official Notice / Announcement',
-                    '🗑️ Delete Feed Post or Notice',
-                    '➕ Add New Directory Entry',
-                    '✏️ Modify / Edit Directory Entry',
-                    '❌ Delete Directory Entry'
+                    '📢 Create Notice',
+                    '🗑️ Delete Post',
+                    '➕ Add Member',
+                    '✏️ Edit Member',
+                    '❌ Delete Member',
+                    '🔑 Password Requests & Management',
+                    '📋 Audit Logs'
                 ], horizontal=True)
 
                 st.markdown('---')
 
-                # OPERATION 1: CREATE NOTICE
-                if admin_action == '📢 Create Official Notice / Announcement':
+                # 1. CREATE NOTICE
+                if admin_action == '📢 Create Notice':
                     st.markdown('#### Broadcast Notice to Community')
                     with st.form('admin_notice_form'):
                         n_title = st.text_input('Notice Title / Subject')
@@ -400,8 +483,8 @@ else:
                             else:
                                 st.warning('Please fill in title and content.')
 
-                # OPERATION 2: DELETE POST
-                elif admin_action == '🗑️ Delete Feed Post or Notice':
+                # 2. DELETE POST
+                elif admin_action == '🗑️ Delete Post':
                     st.markdown('#### Delete Post by ID')
                     try:
                         with engine.connect() as conn:
@@ -420,27 +503,29 @@ else:
                     except Exception as e:
                         st.warning(f'Error loading posts: {e}')
 
-                # OPERATION 3: ADD DIRECTORY ENTRY
-                elif admin_action == '➕ Add New Directory Entry':
+                # 3. ADD MEMBER
+                elif admin_action == '➕ Add Member':
                     st.markdown('#### Add New Member Record')
                     with st.form('admin_add_dir', clear_on_submit=True):
                         c1, c2 = st.columns(2)
+                        default_org = admin_block if admin_block != 'Master Admin' else 'Block A'
                         with c1:
-                            org = st.text_input('Organization / Block', value=admin_block)
+                            org = st.text_input('Organization / Block', value=default_org)
                             full_name = st.text_input('Full Name *')
+                            userid = st.text_input('User ID')
+                            password = st.text_input('Password', type='password')
                             address = st.text_input('Address')
                             phone = st.text_input('Phone Number')
                             wa_call = st.text_input('WhatsApp Call')
                             wa_chat = st.text_input('WhatsApp Chat')
+                        with c2:
                             email = st.text_input('Email')
                             website = st.text_input('Website')
-                        with c2:
                             blood = st.text_input('Blood Group')
                             allergies = st.text_input('Allergies')
                             med_cond = st.text_input('Medical Conditions')
                             meds = st.text_input('Medications')
                             em_name = st.text_input('Emergency Contact Name')
-                            em_rel = st.text_input('Emergency Contact Relationship')
                             em_phone = st.text_input('Emergency Contact Phone')
                             bio = st.text_area('Bio / Notes')
                         
@@ -451,15 +536,15 @@ else:
                                     conn.execute(
                                         text("""
                                             INSERT INTO togethespace_v4_directory 
-                                            ("Organization", "Full Name", "Address", "Phone Number", "WhatsApp Call", "WhatsApp Chat", "Email", "Website", "Blood Group", "Allergies", "Medical Conditions", "Medications", "Emergency Contact Name", "Emergency Contact Relationship", "Emergency Contact Phone", "Bio")
+                                            ("Organization", "Full Name", "User ID", "Password", "Address", "Phone Number", "WhatsApp Call", "WhatsApp Chat", "Email", "Website", "Blood Group", "Allergies", "Medical Conditions", "Medications", "Emergency Contact Name", "Emergency Contact Phone", "Bio")
                                             VALUES 
-                                            (:org, :full_name, :address, :phone, :wa_call, :wa_chat, :email, :website, :blood, :allergies, :med_cond, :meds, :em_name, :em_rel, :em_phone, :bio)
+                                            (:org, :full_name, :userid, :password, :address, :phone, :wa_call, :wa_chat, :email, :website, :blood, :allergies, :med_cond, :meds, :em_name, :em_phone, :bio)
                                         """),
                                         {
-                                            'org': org, 'full_name': full_name, 'address': address, 'phone': phone,
-                                            'wa_call': wa_call, 'wa_chat': wa_chat, 'email': email, 'website': website,
-                                            'blood': blood, 'allergies': allergies, 'med_cond': med_cond, 'meds': meds,
-                                            'em_name': em_name, 'em_rel': em_rel, 'em_phone': em_phone, 'bio': bio
+                                            'org': org, 'full_name': full_name, 'userid': userid, 'password': password,
+                                            'address': address, 'phone': phone, 'wa_call': wa_call, 'wa_chat': wa_chat,
+                                            'email': email, 'website': website, 'blood': blood, 'allergies': allergies,
+                                            'med_cond': med_cond, 'meds': meds, 'em_name': em_name, 'em_phone': em_phone, 'bio': bio
                                         }
                                     )
                                 st.success('New member added successfully!')
@@ -467,18 +552,21 @@ else:
                             else:
                                 st.warning('Full Name is required.')
 
-                # OPERATION 4: MODIFY / EDIT DIRECTORY ENTRY
-                elif admin_action == '✏️ Modify / Edit Directory Entry':
+                # 4. EDIT MEMBER
+                elif admin_action == '✏️ Edit Member':
                     st.markdown('#### Edit Existing Member')
                     edit_query = st.text_input('Search Member Name to Edit', '')
                     if edit_query:
                         with engine.connect() as conn:
-                            res_df = pd.read_sql(text('SELECT id, "Full Name", "Address", "Phone Number" FROM togethespace_v4_directory WHERE "Full Name" ILIKE :q LIMIT 20;'), con=conn, params={"q": f"%{edit_query}%"})
+                            if admin_block != 'Master Admin':
+                                res_df = pd.read_sql(text('SELECT id, "Full Name", "Organization", "Phone Number" FROM togethespace_v4_directory WHERE "Organization" = :block AND "Full Name" ILIKE :q LIMIT 20;'), con=conn, params={"block": admin_block, "q": f"%{edit_query}%"})
+                            else:
+                                res_df = pd.read_sql(text('SELECT id, "Full Name", "Organization", "Phone Number" FROM togethespace_v4_directory WHERE "Full Name" ILIKE :q LIMIT 20;'), con=conn, params={"q": f"%{edit_query}%"})
                         
                         if res_df.empty:
-                            st.info('No members found matching that name.')
+                            st.info('No members found matching your search in your authorized block.')
                         else:
-                            member_choice = st.selectbox('Select Member to Modify', res_df.apply(lambda r: f"ID {r['id']}: {r['Full Name']} ({r['Phone Number']})", axis=1))
+                            member_choice = st.selectbox('Select Member to Modify', res_df.apply(lambda r: f"ID {r['id']}: {r['Full Name']} ({r['Organization']})", axis=1))
                             if member_choice:
                                 m_id = int(member_choice.split(':')[0].replace('ID ', ''))
                                 with engine.connect() as conn:
@@ -486,33 +574,37 @@ else:
                                 
                                 with st.form('edit_dir_form'):
                                     e_name = st.text_input('Full Name', value=str(m_data.get('Full Name', '')))
+                                    e_uid = st.text_input('User ID', value=str(m_data.get('User ID', '')))
+                                    e_pwd = st.text_input('Password', value=str(m_data.get('Password', '')))
                                     e_addr = st.text_input('Address', value=str(m_data.get('Address', '')))
                                     e_phone = st.text_input('Phone Number', value=str(m_data.get('Phone Number', '')))
                                     e_email = st.text_input('Email', value=str(m_data.get('Email', '')))
-                                    e_notes = st.text_area('Notes', value=str(m_data.get('Notes', '')))
                                     
                                     update_btn = st.form_submit_button('Save Changes')
                                     if update_btn:
                                         with engine.begin() as conn:
                                             conn.execute(
-                                                text('UPDATE togethespace_v4_directory SET "Full Name" = :name, "Address" = :addr, "Phone Number" = :phone, "Email" = :email, "Notes" = :notes WHERE id = :id'),
-                                                {'name': e_name, 'addr': e_addr, 'phone': e_phone, 'email': e_email, 'notes': e_notes, 'id': m_id}
+                                                text('UPDATE togethespace_v4_directory SET "Full Name" = :name, "User ID" = :uid, "Password" = :pwd, "Address" = :addr, "Phone Number" = :phone, "Email" = :email WHERE id = :id'),
+                                                {'name': e_name, 'uid': e_uid, 'pwd': e_pwd, 'addr': e_addr, 'phone': e_phone, 'email': e_email, 'id': m_id}
                                             )
                                         st.success('Member record updated successfully!')
                                         st.rerun()
 
-                # OPERATION 5: DELETE DIRECTORY ENTRY
-                elif admin_action == '❌ Delete Directory Entry':
+                # 5. DELETE MEMBER
+                elif admin_action == '❌ Delete Member':
                     st.markdown('#### Remove Member Record')
                     del_query = st.text_input('Search Member Name to Delete', '')
                     if del_query:
                         with engine.connect() as conn:
-                            del_df = pd.read_sql(text('SELECT id, "Full Name", "Phone Number" FROM togethespace_v4_directory WHERE "Full Name" ILIKE :q LIMIT 20;'), con=conn, params={"q": f"%{del_query}%"})
+                            if admin_block != 'Master Admin':
+                                del_df = pd.read_sql(text('SELECT id, "Full Name", "Organization", "Phone Number" FROM togethespace_v4_directory WHERE "Organization" = :block AND "Full Name" ILIKE :q LIMIT 20;'), con=conn, params={"block": admin_block, "q": f"%{del_query}%"})
+                            else:
+                                del_df = pd.read_sql(text('SELECT id, "Full Name", "Organization", "Phone Number" FROM togethespace_v4_directory WHERE "Full Name" ILIKE :q LIMIT 20;'), con=conn, params={"q": f"%{del_query}%"})
                         
                         if del_df.empty:
-                            st.info('No members found.')
+                            st.info('No members found in your authorized block.')
                         else:
-                            del_choice = st.selectbox('Select Member to Delete', del_df.apply(lambda r: f"ID {r['id']}: {r['Full Name']} ({r['Phone Number']})", axis=1))
+                            del_choice = st.selectbox('Select Member to Delete', del_df.apply(lambda r: f"ID {r['id']}: {r['Full Name']} ({r['Organization']})", axis=1))
                             if del_choice:
                                 d_id = int(del_choice.split(':')[0].replace('ID ', ''))
                                 if st.button('⚠️ Confirm & Permanently Delete Member', type='primary'):
@@ -520,6 +612,124 @@ else:
                                         conn.execute(text('DELETE FROM togethespace_v4_directory WHERE id = :id'), {'id': d_id})
                                     st.success(f'Member ID {d_id} deleted successfully.')
                                     st.rerun()
+
+                # 6. PASSWORD REQUESTS & MANAGEMENT
+                elif admin_action == '🔑 Password Requests & Management':
+                    st.markdown('#### 🔑 Resident Password Management & Change Requests')
+                    
+                    if admin_block == 'Master Admin':
+                        st.info('👑 Master Admin Mode: You can change any resident or block admin password instantly without approval, and approve pending requests.')
+                    else:
+                        st.info(f'🏢 Block Admin Mode ({admin_block}): You can manage residents in **{admin_block}** (including yourself). Submitting a password change requires Master Admin approval.')
+
+                    pw_query = st.text_input('Search Member by Name or User ID', '')
+                    if pw_query:
+                        with engine.connect() as conn:
+                            if admin_block != 'Master Admin':
+                                pw_df = pd.read_sql(text('SELECT id, "Full Name", "User ID", "Organization", "Password" FROM togethespace_v4_directory WHERE "Organization" = :block AND ("Full Name" ILIKE :q OR "User ID" ILIKE :q) LIMIT 20;'), con=conn, params={"block": admin_block, "q": f"%{pw_query}%"})
+                            else:
+                                pw_df = pd.read_sql(text('SELECT id, "Full Name", "User ID", "Organization", "Password" FROM togethespace_v4_directory WHERE "Full Name" ILIKE :q OR "User ID" ILIKE :q LIMIT 20;'), con=conn, params={"q": f"%{pw_query}%"})
+                        
+                        if pw_df.empty:
+                            st.warning('No matching records found.')
+                        else:
+                            target_choice = st.selectbox('Select Resident / Member', pw_df.apply(lambda r: f"ID {r['id']} | {r['Full Name']} (User ID: {r.get('User ID')}) [{r['Organization']}]", axis=1))
+                            if target_choice:
+                                t_id = int(target_choice.split('|')[0].replace('ID ', '').strip())
+                                t_row = pw_df[pw_df['id'] == t_id].iloc[0]
+                                
+                                with st.form('pwd_change_form'):
+                                    new_pwd = st.text_input('New Password', type='password')
+                                    submit_btn = st.form_submit_button('Execute or Submit Request')
+                                    
+                                    if submit_btn:
+                                        if new_pwd:
+                                            with engine.begin() as conn:
+                                                if admin_block == 'Master Admin':
+                                                    conn.execute(
+                                                        text('UPDATE togethespace_v4_directory SET "Password" = :pwd WHERE id = :id'),
+                                                        {'pwd': new_pwd, 'id': t_id}
+                                                    )
+                                                    conn.execute(
+                                                        text('INSERT INTO togethespace_v4_password_logs (changed_by, target_userid, action_type, details) VALUES (:by, :target, :action, :details)'),
+                                                        {'by': 'Master Admin', 'target': str(t_row.get('User ID', t_row['Full Name'])), 'action': 'Direct Password Change', 'details': f'Password updated for {t_row["Full Name"]} by Master Admin.'}
+                                                    )
+                                                    st.success('Password updated successfully and logged!')
+                                                    st.rerun()
+                                                else:
+                                                    conn.execute(
+                                                        text('INSERT INTO togethespace_v4_password_requests (requested_by, target_userid, target_name, block, new_password, status) VALUES (:by, :target, :name, :block, :pwd, :status)'),
+                                                        {'by': f'{admin_block} Admin', 'target': str(t_row.get('User ID', t_row['Full Name'])), 'name': t_row['Full Name'], 'block': admin_block, 'pwd': new_pwd, 'status': 'Pending'}
+                                                    )
+                                                    st.success('Password change request submitted successfully to Master Admin for acceptance!')
+                                                    st.rerun()
+                                        else:
+                                            st.warning('Please enter a new password.')
+
+                    st.markdown('---')
+                    st.markdown('#### 📋 Pending Change Requests')
+                    try:
+                        with engine.connect() as conn:
+                            if admin_block == 'Master Admin':
+                                req_df = pd.read_sql(text('SELECT * FROM togethespace_v4_password_requests WHERE status = \'Pending\' ORDER BY created_at DESC;'), con=conn)
+                            else:
+                                req_df = pd.read_sql(text('SELECT * FROM togethespace_v4_password_requests WHERE block = :block AND status = \'Pending\' ORDER BY created_at DESC;'), con=conn, params={'block': admin_block})
+                        
+                        if req_df.empty:
+                            st.info('No pending password requests.')
+                        else:
+                            for idx, req in req_df.iterrows():
+                                st.markdown(f"""
+                                    <div class="admin-card">
+                                        <b>Request ID:</b> {req['id']} | <b>Block:</b> {req['block']} | <b>Requested By:</b> {req['requested_by']}<br>
+                                        <b>Target:</b> {req['target_name']} (ID: {req['target_userid']}) | <b>Date:</b> {req['created_at']}
+                                    </div>
+                                """, unsafe_allow_html=True)
+                                
+                                if admin_block == 'Master Admin':
+                                    col_app, col_rej = st.columns(2)
+                                    with col_app:
+                                        if st.button(f'✅ Approve #{req["id"]}', key=f'app_{req["id"]}'):
+                                            with engine.begin() as conn:
+                                                conn.execute(
+                                                    text('UPDATE togethespace_v4_directory SET "Password" = :pwd WHERE "User ID" = :uid OR "Full Name" = :name'),
+                                                    {'pwd': req['new_password'], 'uid': req['target_userid'], 'name': req['target_name']}
+                                                )
+                                                conn.execute(
+                                                    text('UPDATE togethespace_v4_password_requests SET status = \'Approved\' WHERE id = :id'),
+                                                    {'id': req['id']}
+                                                )
+                                                conn.execute(
+                                                    text('INSERT INTO togethespace_v4_password_logs (changed_by, target_userid, action_type, details) VALUES (:by, :target, :action, :details)'),
+                                                    {'by': f'Master Admin (Approved {req["requested_by"]})', 'target': req['target_userid'], 'action': 'Approved Password Request', 'details': f'Approved request for {req["target_name"]}.'}
+                                                )
+                                            st.success(f'Request #{req["id"]} approved and password updated!')
+                                            st.rerun()
+                                    with col_rej:
+                                        if st.button(f'❌ Reject #{req["id"]}', key=f'rej_{req["id"]}'):
+                                            with engine.begin() as conn:
+                                                conn.execute(
+                                                    text('UPDATE togethespace_v4_password_requests SET status = \'Rejected\' WHERE id = :id'),
+                                                    {'id': req['id']}
+                                                )
+                                            st.warning(f'Request #{req["id"]} rejected.')
+                                            st.rerun()
+                    except Exception as e:
+                        st.warning(f'Could not load requests: {e}')
+
+                # 7. AUDIT LOGS
+                elif admin_action == '📋 Audit Logs':
+                    st.markdown('#### 📜 Password Change Audit Logs')
+                    try:
+                        with engine.connect() as conn:
+                            logs_df = pd.read_sql(text('SELECT * FROM togethespace_v4_password_logs ORDER BY timestamp DESC LIMIT 100;'), con=conn)
+                        
+                        if logs_df.empty:
+                            st.info('No audit logs recorded yet.')
+                        else:
+                            st.dataframe(logs_df, use_container_width=True)
+                    except Exception as e:
+                        st.info('Audit log table will populate once password updates or requests are processed.')
 
     except Exception as e:
         st.error(f'Database connection or query failed: {e}')
