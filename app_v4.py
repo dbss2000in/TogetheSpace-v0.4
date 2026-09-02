@@ -1,4 +1,5 @@
 import urllib.parse
+import re
 import bcrypt
 import pandas as pd
 import streamlit as st
@@ -96,6 +97,13 @@ else:
         
         with engine.connect() as conn:
             conn.execute(text('SELECT 1;'))
+            # Ensure admin busy status table exists
+            conn.execute(text("""
+                CREATE TABLE IF NOT EXISTS togethespace_v4_admin_status (
+                    block VARCHAR(50) PRIMARY KEY,
+                    is_busy BOOLEAN DEFAULT FALSE
+                );
+            """))
 
         def hash_password(plain_text_password):
             return bcrypt.hashpw(plain_text_password.encode('utf-8'), bcrypt.gensalt()).decode('utf-8')
@@ -110,6 +118,27 @@ else:
                     return False
             else:
                 return plain_text_password == stored_password
+
+        def validate_password_policy(password):
+            if len(password) < 8:
+                return False, "Password must be at least 8 characters long."
+            if not re.search(r'[A-Z]', password):
+                return False, "Password must contain at least one capital letter."
+            if not re.search(r'[a-z]', password):
+                return False, "Password must contain at least one small letter."
+            if not re.search(r'\d', password):
+                return False, "Password must contain at least one number."
+            if not re.search(r'[!@#$%^&*(),.?":{}|<>\-_=+~`\'\\[\]\\/]', password):
+                return False, "Password must contain at least one special character."
+            return True, "Valid"
+
+        def is_admin_busy(block_name):
+            try:
+                with engine.connect() as conn:
+                    res = conn.execute(text('SELECT is_busy FROM togethespace_v4_admin_status WHERE block = :b'), {'b': block_name}).fetchone()
+                    return res[0] if res else False
+            except Exception:
+                return False
 
         ADMIN_PASSCODE_HASHES = {
             'Block A': hash_password('BlockA2026!'),
@@ -353,23 +382,36 @@ else:
         with tab_feed:
             st.markdown(f'### 🌊 Community Feed & Posts ({user_block if not is_master else "All Blocks / Global"})')
             
-            with st.expander('➕ Publish a New Community Post', expanded=False):
+            with st.expander('➕ Publish a New Community Post (with Image / Audio / Video)', expanded=False):
                 with st.form('inline_feed_form', clear_on_submit=True):
                     new_title = st.text_input('Title / Subject')
                     new_category = st.selectbox('Category', ['General', 'Notice', 'Announcement', 'Community Update', 'Discussion'])
                     new_author = st.text_input('Author Name', value=current_user.get('Full Name', ''))
                     new_content = st.text_area('Content / Details')
                     
+                    st.markdown('#### 📎 Media Attachments')
+                    media_type = st.selectbox('Media Type', ['None', 'Image', 'Audio', 'Video'])
+                    media_url = st.text_input('Media URL (Direct link to image, audio, or video file)')
+                    
                     submitted = st.form_submit_button('Publish Post')
                     if submitted:
                         if new_title and new_content:
+                            final_content = new_content
+                            if media_type != 'None' and media_url:
+                                if media_type == 'Image':
+                                    final_content += f"<br><br><img src='{media_url}' style='max-width:100%; border-radius:8px;'>"
+                                elif media_type == 'Audio':
+                                    final_content += f"<br><br><audio controls style='width:100%;'><source src='{media_url}'></audio>"
+                                elif media_type == 'Video':
+                                    final_content += f"<br><br><video controls width='100%' style='border-radius:8px;'><source src='{media_url}'></video>"
+
                             post_block = user_block if user_block in ['Block A', 'Block B', 'Block C', 'Block AE'] else 'Block A'
                             with engine.begin() as conn:
                                 conn.execute(
                                     text('INSERT INTO togethespace_v4_records (title, category, content, author, likes, "Block", "Visibility", "Broadcast_Status") VALUES (:title, :category, :content, :author, 0, :block, :visibility, :status)'),
-                                    {'title': new_title, 'category': new_category, 'content': new_content, 'author': new_author, 'block': post_block, 'visibility': 'Block-Only', 'status': 'None'}
+                                    {'title': new_title, 'category': new_category, 'content': final_content, 'author': new_author, 'block': post_block, 'visibility': 'Block-Only', 'status': 'None'}
                                 )
-                            st.success(f'Post successfully published for {post_block}!')
+                            st.success(f'Post successfully published for {post_block} with media attachment!')
                             st.rerun()
                         else:
                             st.warning('Please provide both a Title and Content.')
@@ -403,7 +445,7 @@ else:
                                     <b>Category:</b> {row['category']} | <b>Author:</b> {row['author'] or 'Anonymous'} | <b>Posted:</b> {row['created_at']}
                                 </p>
                                 <p style="color: #0277bd; font-size: 0.85em; margin-bottom: 10px;">{vis_label}</p>
-                                <p style="color: #263238; font-size: 1.05em;">{row['content']}</p>
+                                <div style="color: #263238; font-size: 1.05em;">{row['content']}</div>
                             </div>
                         """, unsafe_allow_html=True)
                         
@@ -447,7 +489,7 @@ else:
                                 <p style="color: #546e7a; font-size: 0.9em; margin-bottom: 10px;">
                                     <b>Posted by:</b> {row['author'] or 'Admin'} | <b>Date:</b> {row['created_at']}
                                 </p>
-                                <p style="color: #1a237e; font-size: 1.05em;">{row['content']}</p>
+                                <div style="color: #1a237e; font-size: 1.05em;">{row['content']}</div>
                             </div>
                         """, unsafe_allow_html=True)
             except Exception as e:
@@ -455,18 +497,32 @@ else:
 
         # 4. CHAT TAB
         with tab_chat:
-            st.markdown('### 💬 Real-Time Community Chat Facility')
+            st.markdown('### 💬 Real-Time Community Chat Facility (with Media Support)')
             
             with st.form('chat_form', clear_on_submit=True):
                 chat_sender = st.text_input('Your Name', value=current_user.get('Full Name', ''))
                 chat_msg = st.text_area('Message')
+                
+                st.markdown('#### 📎 Chat Media Attachment')
+                chat_media_type = st.selectbox('Media Type', ['None', 'Image', 'Audio', 'Video'], key='chat_media_type')
+                chat_media_url = st.text_input('Media URL (Direct link)', key='chat_media_url')
+
                 send_btn = st.form_submit_button('Send Message')
                 if send_btn:
                     if chat_sender and chat_msg:
+                        final_msg = chat_msg
+                        if chat_media_type != 'None' and chat_media_url:
+                            if chat_media_type == 'Image':
+                                final_msg += f"<br><br><img src='{chat_media_url}' style='max-width:100%; border-radius:6px;'>"
+                            elif chat_media_type == 'Audio':
+                                final_msg += f"<br><br><audio controls style='width:100%;'><source src='{chat_media_url}'></audio>"
+                            elif chat_media_type == 'Video':
+                                final_msg += f"<br><br><video controls width='100%' style='border-radius:6px;'><source src='{chat_media_url}'></video>"
+
                         with engine.begin() as conn:
                             conn.execute(
                                 text('INSERT INTO togethespace_v4_chat (sender, message) VALUES (:sender, :message)'),
-                                {'sender': chat_sender, 'message': chat_msg}
+                                {'sender': chat_sender, 'message': final_msg}
                             )
                         st.success('Message posted to chat!')
                         st.rerun()
@@ -486,7 +542,7 @@ else:
                         st.markdown(f"""
                             <div class="chat-bubble">
                                 <b>{row['sender']}</b> <span style="font-size: 0.8em; color: #78909c;">({row['created_at']})</span><br>
-                                {row['message']}
+                                <div>{row['message']}</div>
                             </div>
                         """, unsafe_allow_html=True)
             except Exception as e:
@@ -550,42 +606,71 @@ else:
             """, unsafe_allow_html=True)
 
             if not st.session_state.get('is_admin_session'):
-                st.markdown(f'#### 🔑 Request Password Change to Block Admin ({r.get("Organization")})')
+                block_name = r.get("Organization")
+                admin_is_busy = is_admin_busy(block_name)
+                
+                if admin_is_busy:
+                    st.info(f"🔴 Notice: The **{block_name} Admin** is currently marked **Busy**. Your password change request will be **auto-accepted** instantly upon submission!")
+                else:
+                    st.info(f'ℹ️ Request password change to your {block_name} Block Admin. Password Policy: Must be at least 8 characters and include at least one capital letter, one small letter, one number, and one special character.')
+
                 with st.form('resident_pwd_req_form'):
                     new_r_pwd = st.text_input('New Desired Password', type='password')
-                    req_submit = st.form_submit_button(f'Submit Request to {r.get("Organization")} Admin')
+                    req_submit = st.form_submit_button(f'Submit Request to {block_name} Admin')
                     if req_submit:
                         if new_r_pwd:
-                            hashed_new_pwd = hash_password(new_r_pwd)
-                            with engine.begin() as conn:
-                                conn.execute(
-                                    text('INSERT INTO togethespace_v4_password_requests (requested_by, target_userid, target_name, block, new_password, status) VALUES (:by, :target, :name, :block, :pwd, :status)'),
-                                    {
-                                        'by': f"Resident: {r.get('Full Name')}",
-                                        'target': str(r.get('User ID')),
-                                        'name': r.get('Full Name'),
-                                        'block': r.get('Organization', 'General'),
-                                        'pwd': hashed_new_pwd,
-                                        'status': 'Pending'
-                                    }
-                                )
-                                conn.execute(
-                                    text('INSERT INTO togethespace_v4_password_logs (changed_by, target_userid, action_type, details) VALUES (:by, :target, :action, :details)'),
-                                    {
-                                        'by': r.get('Full Name'),
-                                        'target': str(r.get('User ID')),
-                                        'action': 'Password Change Request',
-                                        'details': f'Password change request submitted by resident {r.get("Full Name")} to {r.get("Organization")} Block Admin.'
-                                    }
-                                )
-                            st.success(f'Password change request sent to your {r.get("Organization")} Block Admin for approval, and log recorded!')
+                            is_valid, msg = validate_password_policy(new_r_pwd)
+                            if not is_valid:
+                                st.error(f'❌ Password Policy Error: {msg}')
+                            else:
+                                hashed_new_pwd = hash_password(new_r_pwd)
+                                req_status = 'Approved' if admin_is_busy else 'Pending'
+                                
+                                with engine.begin() as conn:
+                                    conn.execute(
+                                        text('INSERT INTO togethespace_v4_password_requests (requested_by, target_userid, target_name, block, new_password, status) VALUES (:by, :target, :name, :block, :pwd, :status)'),
+                                        {
+                                            'by': f"Resident: {r.get('Full Name')}",
+                                            'target': str(r.get('User ID')),
+                                            'name': r.get('Full Name'),
+                                            'block': block_name,
+                                            'pwd': hashed_new_pwd,
+                                            'status': req_status
+                                        }
+                                    )
+                                    if admin_is_busy:
+                                        conn.execute(
+                                            text('UPDATE togethespace_v4_directory SET "Password" = :pwd WHERE "User ID" = :uid OR "Full Name" = :name'),
+                                            {'pwd': hashed_new_pwd, 'uid': str(r.get('User ID')), 'name': r.get('Full Name')}
+                                        )
+                                        conn.execute(
+                                            text('INSERT INTO togethespace_v4_password_logs (changed_by, target_userid, action_type, details) VALUES (:by, :target, :action, :details)'),
+                                            {
+                                                'by': f'{block_name} Admin (Busy Auto-Accept)',
+                                                'target': str(r.get('User ID')),
+                                                'action': 'Auto-Accepted Password Request',
+                                                'details': f'Password change request for resident {r.get("Full Name")} auto-accepted because admin was marked busy.'
+                                            }
+                                        )
+                                        st.success('⚡ Admin is busy! Your password change request was automatically approved and your password updated successfully!')
+                                    else:
+                                        conn.execute(
+                                            text('INSERT INTO togethespace_v4_password_logs (changed_by, target_userid, action_type, details) VALUES (:by, :target, :action, :details)'),
+                                            {
+                                                'by': r.get('Full Name'),
+                                                'target': str(r.get('User ID')),
+                                                'action': 'Password Change Request',
+                                                'details': f'Password change request submitted by resident {r.get("Full Name")} to {block_name} Block Admin.'
+                                            }
+                                        )
+                                        st.success(f'Password change request sent to your {block_name} Block Admin for approval, and log recorded!')
                         else:
                             st.warning('Please enter a new password.')
             else:
                 if is_master:
                     st.info('👑 You are logged in as Master Admin. Use the Admin Portal tab to directly change any password without a request, or manage incoming Block Admin requests.')
                 else:
-                    st.info('ℹ️ You are logged in as a Block Admin. Go to the Admin Portal tab to approve resident requests and to submit your own password change request to the Master Admin.')
+                    st.info('ℹ️ You are logged in as a Block Admin. Go to the Admin Portal tab to approve resident requests, mark yourself busy for auto-acceptance, and submit your own request to the Master Admin.')
 
         # 7. ADMIN PORTAL TAB
         with tab_admin:
@@ -616,6 +701,46 @@ else:
 
             if is_admin_logged:
                 st.success(f'🔓 Authenticated successfully as **{admin_block}**!')
+
+                # --- ADMIN BUSY STATUS TOGGLE ---
+                current_busy_state = is_admin_busy(admin_block)
+                new_busy_state = st.checkbox(
+                    "🔴 Mark Self as Busy (Auto-Accept Incoming Password Requests)",
+                    value=current_busy_state,
+                    key=f"busy_toggle_{admin_block}"
+                )
+                if new_busy_state != current_busy_state:
+                    with engine.begin() as conn:
+                        conn.execute(
+                            text('INSERT INTO togethespace_v4_admin_status (block, is_busy) VALUES (:b, :busy) ON CONFLICT (block) DO UPDATE SET is_busy = :busy'),
+                            {'b': admin_block, 'busy': new_busy_state}
+                        )
+                    if new_busy_state:
+                        # Auto-approve any currently pending requests for this scope
+                        if admin_block == 'Master Admin':
+                            pending_to_auto = pd.read_sql(text("SELECT * FROM togethespace_v4_password_requests WHERE status = 'Pending' AND (requested_by LIKE 'Block Admin:%' OR requested_by = 'Master Admin')"), con=engine)
+                        else:
+                            pending_to_auto = pd.read_sql(text("SELECT * FROM togethespace_v4_password_requests WHERE block = :b AND status = 'Pending' AND requested_by LIKE 'Resident:%'"), con=engine, params={'b': admin_block})
+                        
+                        for _, p_req in pending_to_auto.iterrows():
+                            with engine.begin() as conn:
+                                if admin_block != 'Master Admin' or p_req['target_userid'] != 'master_admin':
+                                    conn.execute(
+                                        text('UPDATE togethespace_v4_directory SET "Password" = :pwd WHERE "User ID" = :uid OR "Full Name" = :name'),
+                                        {'pwd': p_req['new_password'], 'uid': p_req['target_userid'], 'name': p_req['target_name']}
+                                    )
+                                conn.execute(
+                                    text('UPDATE togethespace_v4_password_requests SET status = \'Approved\' WHERE id = :id'),
+                                    {'id': p_req['id']}
+                                )
+                                conn.execute(
+                                    text('INSERT INTO togethespace_v4_password_logs (changed_by, target_userid, action_type, details) VALUES (:by, :target, :action, :details)'),
+                                    {'by': f'{admin_block} Admin (Busy Mode)', 'target': p_req['target_userid'], 'action': 'Bulk Auto-Accepted Password Request', 'details': f'Auto-approved pending request #{p_req["id"]} because admin marked themselves busy.'}
+                                )
+                        st.success(f"Status updated to Busy! All pending requests have been automatically approved.")
+                    else:
+                        st.info(f"Status updated to Available.")
+                    st.rerun()
 
                 admin_action = st.radio('Select Admin Operation', [
                     '📢 Create Notice',
@@ -743,6 +868,7 @@ else:
                 # 4. ADD MEMBER
                 elif admin_action == '➕ Add Member':
                     st.markdown('#### Add New Member Record')
+                    st.info('ℹ️ Password Policy: Must be at least 8 characters and include at least one capital letter, one small letter, one number, and one special character.')
                     with st.form('admin_add_dir', clear_on_submit=True):
                         c1, c2 = st.columns(2)
                         default_org = admin_block if admin_block != 'Master Admin' else 'Block A'
@@ -769,24 +895,29 @@ else:
                         add_sub = st.form_submit_button('Insert New Member')
                         if add_sub:
                             if full_name:
-                                hashed_pwd = hash_password(password) if password else hash_password('Welcome2026!')
-                                with engine.begin() as conn:
-                                    conn.execute(
-                                        text("""
-                                            INSERT INTO togethespace_v4_directory 
-                                            ("Organization", "Full Name", "User ID", "Password", "Address", "Phone Number", "WhatsApp Call", "WhatsApp Chat", "Email", "Website", "Blood Group", "Allergies", "Medical Conditions", "Medications", "Emergency Contact Name", "Emergency Contact Phone", "Bio")
-                                            VALUES 
-                                            (:org, :full_name, :userid, :password, :address, :phone, :wa_call, :wa_chat, :email, :website, :blood, :allergies, :med_cond, :meds, :em_name, :em_phone, :bio)
-                                        """),
-                                        {
-                                            'org': org, 'full_name': full_name, 'userid': userid, 'password': hashed_pwd,
-                                            'address': address, 'phone': phone, 'wa_call': wa_call, 'wa_chat': wa_chat,
-                                            'email': email, 'website': website, 'blood': blood, 'allergies': allergies,
-                                            'med_cond': med_cond, 'meds': meds, 'em_name': em_name, 'em_phone': em_phone, 'bio': bio
-                                        }
-                                    )
-                                st.success('New member added successfully with encrypted password!')
-                                st.rerun()
+                                pwd_to_use = password if password else 'Welcome2026!'
+                                is_valid, msg = validate_password_policy(pwd_to_use)
+                                if not is_valid:
+                                    st.error(f'❌ Password Policy Error: {msg}')
+                                else:
+                                    hashed_pwd = hash_password(pwd_to_use)
+                                    with engine.begin() as conn:
+                                        conn.execute(
+                                            text("""
+                                                INSERT INTO togethespace_v4_directory 
+                                                ("Organization", "Full Name", "User ID", "Password", "Address", "Phone Number", "WhatsApp Call", "WhatsApp Chat", "Email", "Website", "Blood Group", "Allergies", "Medical Conditions", "Medications", "Emergency Contact Name", "Emergency Contact Phone", "Bio")
+                                                VALUES 
+                                                (:org, :full_name, :userid, :password, :address, :phone, :wa_call, :wa_chat, :email, :website, :blood, :allergies, :med_cond, :meds, :em_name, :em_phone, :bio)
+                                            """),
+                                            {
+                                                'org': org, 'full_name': full_name, 'userid': userid, 'password': hashed_pwd,
+                                                'address': address, 'phone': phone, 'wa_call': wa_call, 'wa_chat': wa_chat,
+                                                'email': email, 'website': website, 'blood': blood, 'allergies': allergies,
+                                                'med_cond': med_cond, 'meds': meds, 'em_name': em_name, 'em_phone': em_phone, 'bio': bio
+                                            }
+                                        )
+                                    st.success('New member added successfully with encrypted password conforming to policy!')
+                                    st.rerun()
                             else:
                                 st.warning('Full Name is required.')
 
@@ -810,6 +941,7 @@ else:
                                 with engine.connect() as conn:
                                     m_data = pd.read_sql(text('SELECT * FROM togethespace_v4_directory WHERE id = :id'), con=conn, params={'id': m_id}).iloc[0]
                                 
+                                st.info('ℹ️ Password Policy: Must be at least 8 characters and include at least one capital letter, one small letter, one number, and one special character.')
                                 with st.form('edit_dir_form'):
                                     e_name = st.text_input('Full Name', value=str(m_data.get('Full Name', '')))
                                     e_uid = st.text_input('User ID', value=str(m_data.get('User ID', '')))
@@ -820,6 +952,12 @@ else:
                                     
                                     update_btn = st.form_submit_button('Save Changes')
                                     if update_btn:
+                                        if e_pwd:
+                                            is_valid, msg = validate_password_policy(e_pwd)
+                                            if not is_valid:
+                                                st.error(f'❌ Password Policy Error: {msg}')
+                                                st.stop()
+                                        
                                         with engine.begin() as conn:
                                             if e_pwd:
                                                 final_pwd_hash = hash_password(e_pwd)
@@ -863,36 +1001,48 @@ else:
                     if admin_block == 'Master Admin':
                         st.markdown('### 👑 Master Admin: Manage Block Admin Requests & Self-Requests')
                         
-                        # Master Admin Self-Request option
+                        st.info('ℹ️ Password Policy: Must be at least 8 characters and include at least one capital letter, one small letter, one number, and one special character.')
                         with st.expander('➕ Request Password Change for Master Admin (Self-Request)', expanded=False):
+                            master_is_busy = is_admin_busy('Master Admin')
+                            if master_is_busy:
+                                st.info("🔴 Notice: You are currently marked **Busy**. Your self-request will be **auto-accepted** instantly!")
+                            
                             with st.form('master_self_req_form'):
                                 m_req_pwd = st.text_input('New Desired Master Password', type='password')
                                 m_req_sub = st.form_submit_button('Submit Self-Request')
                                 if m_req_sub:
                                     if m_req_pwd:
-                                        hashed_m_req = hash_password(m_req_pwd)
-                                        with engine.begin() as conn:
-                                            conn.execute(
-                                                text('INSERT INTO togethespace_v4_password_requests (requested_by, target_userid, target_name, block, new_password, status) VALUES (:by, :target, :name, :block, :pwd, :status)'),
-                                                {
-                                                    'by': 'Master Admin',
-                                                    'target': 'master_admin',
-                                                    'name': 'Master Administrator',
-                                                    'block': 'All Blocks',
-                                                    'pwd': hashed_m_req,
-                                                    'status': 'Pending'
-                                                }
-                                            )
-                                            conn.execute(
-                                                text('INSERT INTO togethespace_v4_password_logs (changed_by, target_userid, action_type, details) VALUES (:by, :target, :action, :details)'),
-                                                {
-                                                    'by': 'Master Admin',
-                                                    'target': 'master_admin',
-                                                    'action': 'Master Self-Request',
-                                                    'details': 'Master Admin submitted a password change request for self.'
-                                                }
-                                            )
-                                        st.success('Master Admin self-request submitted successfully!')
+                                        is_valid, msg = validate_password_policy(m_req_pwd)
+                                        if not is_valid:
+                                            st.error(f'❌ Password Policy Error: {msg}')
+                                        else:
+                                            hashed_m_req = hash_password(m_req_pwd)
+                                            req_status = 'Approved' if master_is_busy else 'Pending'
+                                            with engine.begin() as conn:
+                                                conn.execute(
+                                                    text('INSERT INTO togethespace_v4_password_requests (requested_by, target_userid, target_name, block, new_password, status) VALUES (:by, :target, :name, :block, :pwd, :status)'),
+                                                    {
+                                                        'by': 'Master Admin',
+                                                        'target': 'master_admin',
+                                                        'name': 'Master Administrator',
+                                                        'block': 'All Blocks',
+                                                        'pwd': hashed_m_req,
+                                                        'status': req_status
+                                                    }
+                                                )
+                                                conn.execute(
+                                                    text('INSERT INTO togethespace_v4_password_logs (changed_by, target_userid, action_type, details) VALUES (:by, :target, :action, :details)'),
+                                                    {
+                                                        'by': 'Master Admin',
+                                                        'target': 'master_admin',
+                                                        'action': 'Master Self-Request',
+                                                        'details': f'Master Admin submitted self-request (Auto-approved: {master_is_busy}).'
+                                                    }
+                                                )
+                                            if master_is_busy:
+                                                st.success('Master Admin self-request automatically approved!')
+                                            else:
+                                                st.success('Master Admin self-request submitted successfully!')
                                     else:
                                         st.warning('Please enter a password.')
 
@@ -915,14 +1065,6 @@ else:
                                     with col_app_m:
                                         if st.button(f'✅ Approve Request #{req["id"]}', key=f'app_m_{req["id"]}'):
                                             with engine.begin() as conn:
-                                                if req['target_userid'] == 'master_admin':
-                                                    # For actual master credentials or system passcode
-                                                    pass
-                                                else:
-                                                    conn.execute(
-                                                        text('UPDATE togethespace_v4_directory SET "Password" = :pwd WHERE "User ID" = :uid OR "Full Name" = :name'),
-                                                        {'pwd': req['new_password'], 'uid': req['target_userid'], 'name': req['target_name']}
-                                                    )
                                                 conn.execute(
                                                     text('UPDATE togethespace_v4_password_requests SET status = \'Approved\' WHERE id = :id'),
                                                     {'id': req['id']}
@@ -948,7 +1090,6 @@ else:
                     else:
                         st.markdown(f'### 🏢 Block Admin ({admin_block}): Resident Requests & Send Request to Master Admin')
                         
-                        # 1. Approve/Reject Resident Requests for this block
                         st.markdown('#### Pending Resident Password Requests (Approve/Reject)')
                         try:
                             with engine.connect() as conn:
@@ -995,44 +1136,58 @@ else:
                             st.warning(f'Error loading resident requests: {e}')
 
                         st.markdown('---')
-                        # 2. Send Block Admin Password Request to Master Admin
                         st.markdown('#### 🚀 Send Password Change Request to Master Admin')
+                        st.info('ℹ️ Password Policy: Must be at least 8 characters and include at least one capital letter, one small letter, one number, and one special character.')
+                        
+                        master_is_busy = is_admin_busy('Master Admin')
+                        if master_is_busy:
+                            st.info("🔴 Notice: The **Master Admin** is currently marked **Busy**. Your request will be **auto-accepted** instantly!")
+
                         with st.form('block_admin_to_master_form'):
                             ba_new_p = st.text_input('New Password for Block Admin', type='password')
                             ba_req_sub = st.form_submit_button('Submit Password Request to Master Admin')
                             if ba_req_sub:
                                 if ba_new_p:
-                                    hashed_ba_p = hash_password(ba_new_p)
-                                    with engine.begin() as conn:
-                                        conn.execute(
-                                            text('INSERT INTO togethespace_v4_password_requests (requested_by, target_userid, target_name, block, new_password, status) VALUES (:by, :target, :name, :block, :pwd, :status)'),
-                                            {
-                                                'by': f'Block Admin: {admin_block}',
-                                                'target': admin_block.lower().replace(' ', '_'),
-                                                'name': f'{admin_block} Administrator',
-                                                'block': admin_block,
-                                                'pwd': hashed_ba_p,
-                                                'status': 'Pending'
-                                            }
-                                        )
-                                        conn.execute(
-                                            text('INSERT INTO togethespace_v4_password_logs (changed_by, target_userid, action_type, details) VALUES (:by, :target, :action, :details)'),
-                                            {
-                                                'by': f'{admin_block} Admin',
-                                                'target': admin_block.lower().replace(' ', '_'),
-                                                'action': 'Sent Password Request to Master Admin',
-                                                'details': f'Block Admin for {admin_block} submitted password change request to Master Admin.'
-                                            }
-                                        )
-                                    st.success('Password change request successfully sent to Master Admin!')
+                                    is_valid, msg = validate_password_policy(ba_new_p)
+                                    if not is_valid:
+                                        st.error(f'❌ Password Policy Error: {msg}')
+                                    else:
+                                        hashed_ba_p = hash_password(ba_new_p)
+                                        req_status = 'Approved' if master_is_busy else 'Pending'
+                                        with engine.begin() as conn:
+                                            conn.execute(
+                                                text('INSERT INTO togethespace_v4_password_requests (requested_by, target_userid, target_name, block, new_password, status) VALUES (:by, :target, :name, :block, :pwd, :status)'),
+                                                {
+                                                    'by': f'Block Admin: {admin_block}',
+                                                    'target': admin_block.lower().replace(' ', '_'),
+                                                    'name': f'{admin_block} Administrator',
+                                                    'block': admin_block,
+                                                    'pwd': hashed_ba_p,
+                                                    'status': req_status
+                                                }
+                                            )
+                                            conn.execute(
+                                                text('INSERT INTO togethespace_v4_password_logs (changed_by, target_userid, action_type, details) VALUES (:by, :target, :action, :details)'),
+                                                {
+                                                    'by': f'{admin_block} Admin',
+                                                    'target': admin_block.lower().replace(' ', '_'),
+                                                    'action': 'Sent Password Request to Master Admin',
+                                                    'details': f'Block Admin for {admin_block} submitted password request (Auto-accepted: {master_is_busy}).'
+                                                }
+                                            )
+                                        if master_is_busy:
+                                            st.success('Master Admin is busy! Your password change request was automatically approved.')
+                                        else:
+                                            st.success('Password change request successfully sent to Master Admin!')
                                 else:
                                     st.warning('Please enter a password.')
 
-                # 8. DIRECT PASSWORD OVERRIDE (Master Only - Can change any password without request)
+                # 8. DIRECT PASSWORD OVERRIDE (Master Only)
                 elif admin_action == '⚡ Direct Password Override (Master Only)':
                     if admin_block == 'Master Admin':
                         st.markdown('### ⚡ Master Admin: Direct Password Override (No Request Needed)')
                         st.info('👑 As Master Admin, you can select any user or block admin and update their password immediately without waiting for approval requests.')
+                        st.info('ℹ️ Password Policy: Must be at least 8 characters and include at least one capital letter, one small letter, one number, and one special character.')
                         
                         try:
                             with engine.connect() as conn:
@@ -1049,25 +1204,29 @@ else:
                                     
                                     if override_sub:
                                         if override_choice and new_override_pwd:
-                                            target_db_id = int(override_choice.split(' — ')[0].replace('ID ', ''))
-                                            final_override_hash = hash_password(new_override_pwd)
-                                            
-                                            with engine.begin() as conn:
-                                                conn.execute(
-                                                    text('UPDATE togethespace_v4_directory SET "Password" = :pwd WHERE id = :id'),
-                                                    {'pwd': final_override_hash, 'id': target_db_id}
-                                                )
-                                                conn.execute(
-                                                    text('INSERT INTO togethespace_v4_password_logs (changed_by, target_userid, action_type, details) VALUES (:by, :target, :action, :details)'),
-                                                    {
-                                                        'by': 'Master Admin',
-                                                        'target': str(target_db_id),
-                                                        'action': 'Direct Password Override',
-                                                        'details': f'Master Admin directly changed password for user record ID {target_db_id} without request.'
-                                                    }
-                                                )
-                                            st.success(f'Password successfully overridden and updated for user ID {target_db_id} without request!')
-                                            st.rerun()
+                                            is_valid, msg = validate_password_policy(new_override_pwd)
+                                            if not is_valid:
+                                                st.error(f'❌ Password Policy Error: {msg}')
+                                            else:
+                                                target_db_id = int(override_choice.split(' — ')[0].replace('ID ', ''))
+                                                final_override_hash = hash_password(new_override_pwd)
+                                                
+                                                with engine.begin() as conn:
+                                                    conn.execute(
+                                                        text('UPDATE togethespace_v4_directory SET "Password" = :pwd WHERE id = :id'),
+                                                        {'pwd': final_override_hash, 'id': target_db_id}
+                                                    )
+                                                    conn.execute(
+                                                        text('INSERT INTO togethespace_v4_password_logs (changed_by, target_userid, action_type, details) VALUES (:by, :target, :action, :details)'),
+                                                        {
+                                                            'by': 'Master Admin',
+                                                            'target': str(target_db_id),
+                                                            'action': 'Direct Password Override',
+                                                            'details': f'Master Admin directly changed password for user record ID {target_db_id} without request.'
+                                                        }
+                                                    )
+                                                st.success(f'Password successfully overridden and updated for user ID {target_db_id} without request!')
+                                                st.rerun()
                                         else:
                                             st.warning('Please provide a new password.')
                         except Exception as e:
