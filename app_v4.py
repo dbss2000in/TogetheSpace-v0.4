@@ -219,7 +219,12 @@ else:
 
             st.stop()
 
-        # --- MAIN APPLICATION TABS (Unlocked after Login) ---
+        # --- CURRENT USER CONTEXT ---
+        current_user = st.session_state['user_record']
+        user_block = current_user.get('Organization', 'General')
+        is_master = st.session_state.get('is_admin_session') and st.session_state.get('admin_preselected_role') == 'Master Admin'
+
+        # --- MAIN APPLICATION TABS ---
         col_top1, col_top2 = st.columns([6, 1])
         with col_top2:
             if st.button('🚪 Logout', use_container_width=True):
@@ -238,7 +243,7 @@ else:
             '🔐 Admin Portal'
         ])
 
-        # 1. COMPREHENSIVE MEMBER DIRECTORY DATASHEET TAB
+        # 1. MEMBER DIRECTORY TAB
         with tab_directory:
             st.markdown('### 📋 Resident & Member Directory Datasheet (v0.3 Migration)')
             
@@ -307,68 +312,65 @@ else:
                                     ✉️ <b>Email:</b> <a href="mailto:{row.get('Email')}">{row.get('Email')}</a> | 
                                     🌐 <b>Website:</b> <a href="{row.get('Website')}" target="_blank">{row.get('Website')}</a>
                                 </p>
-                                <p style="font-size: 0.9em; margin: 4px 0;">
-                                    📸 <b>Instagram:</b> <a href="{row.get('Instagram')}" target="_blank">Profile</a> | 
-                                    📘 <b>Facebook:</b> <a href="{row.get('Facebook')}" target="_blank">Profile</a> | 
-                                    🐦 <b>Twitter:</b> <a href="{row.get('Twitter')}" target="_blank">Profile</a>
-                                </p>
-                                <p style="font-size: 0.9em; margin: 4px 0; background: #ffffff; padding: 8px; border-radius: 6px;">
-                                    🩸 <b>Blood Group:</b> {row.get('Blood Group')} | 
-                                    ⚠️ <b>Allergies:</b> {row.get('Allergies')} | 
-                                    🩺 <b>Conditions:</b> {row.get('Medical Conditions')} | 
-                                    💊 <b>Medications:</b> {row.get('Medications')}
-                                </p>
-                                <p style="font-size: 0.9em; margin: 4px 0;">
-                                    🚨 <b>Emergency Contact:</b> {row.get('Emergency Contact Name')} ({row.get('Emergency Contact Relationship')}) — <a href="tel:{row.get('Emergency Contact Phone')}">{row.get('Emergency Contact Phone')}</a><br>
-                                    🎂 <b>Birthday:</b> {row.get('Birthday')} | 🌍 <b>Timezone:</b> {row.get('Timezone')}<br>
-                                    📝 <b>Notes:</b> {row.get('Notes')}
-                                </p>
                             </div>
                         """, unsafe_allow_html=True)
             except Exception as e:
                 st.warning(f'Directory loading failed. Details: {e}')
 
-        # 2. FEED & SEA GREEN CARDS TAB
+        # 2. FEED & SEA GREEN CARDS TAB (Block-Centric Visibility)
         with tab_feed:
-            st.markdown('### 🌊 Community Feed & Posts')
+            st.markdown(f'### 🌊 Community Feed & Posts ({user_block if not is_master else "All Blocks / Global"})')
             
             with st.expander('➕ Publish a New Community Post', expanded=False):
                 with st.form('inline_feed_form', clear_on_submit=True):
                     new_title = st.text_input('Title / Subject')
                     new_category = st.selectbox('Category', ['General', 'Notice', 'Announcement', 'Community Update', 'Discussion'])
-                    new_author = st.text_input('Author Name')
+                    new_author = st.text_input('Author Name', value=current_user.get('Full Name', ''))
                     new_content = st.text_area('Content / Details')
                     
                     submitted = st.form_submit_button('Publish Post')
                     if submitted:
                         if new_title and new_content:
+                            post_block = user_block if user_block in ['Block A', 'Block B', 'Block C', 'Block AE'] else 'Block A'
                             with engine.begin() as conn:
                                 conn.execute(
-                                    text('INSERT INTO togethespace_v4_records (title, category, content, author, likes) VALUES (:title, :category, :content, :author, 0)'),
-                                    {'title': new_title, 'category': new_category, 'content': new_content, 'author': new_author}
+                                    text('INSERT INTO togethespace_v4_records (title, category, content, author, likes, "Block", "Visibility", "Broadcast_Status") VALUES (:title, :category, :content, :author, 0, :block, :visibility, :status)'),
+                                    {'title': new_title, 'category': new_category, 'content': new_content, 'author': new_author, 'block': post_block, 'visibility': 'Block-Only', 'status': 'None'}
                                 )
-                            st.success('Post successfully published!')
+                            st.success(f'Post successfully published for {post_block}!')
                             st.rerun()
                         else:
                             st.warning('Please provide both a Title and Content.')
 
             st.markdown('---')
-            st.markdown('#### Recent Feed Posts')
+            st.markdown('#### Feed Posts')
             try:
                 with engine.connect() as conn:
-                    df_feed = pd.read_sql(text('SELECT * FROM togethespace_v4_records ORDER BY created_at DESC;'), con=conn)
+                    if is_master:
+                        df_feed = pd.read_sql(text('SELECT * FROM togethespace_v4_records ORDER BY created_at DESC;'), con=conn)
+                    else:
+                        df_feed = pd.read_sql(
+                            text('SELECT * FROM togethespace_v4_records WHERE "Block" = :block OR "Visibility" = \'Global\' ORDER BY created_at DESC;'),
+                            con=conn,
+                            params={'block': user_block}
+                        )
                 
                 if df_feed.empty:
-                    st.info('No posts found in the feed yet.')
+                    st.info('No posts found in your block feed yet.')
                 else:
                     for idx, row in df_feed.iterrows():
                         likes_count = row['likes'] if 'likes' in row and pd.notna(row['likes']) else 0
+                        vis_label = f"🏢 Block: {row.get('Block', 'General')} | 🌐 Visibility: {row.get('Visibility', 'Block-Only')}"
+                        if row.get('Broadcast_Status') == 'Pending':
+                            vis_label += " | ⏳ Cross-Block Broadcast Pending Approval"
+                        
                         st.markdown(f"""
                             <div class="sea-green-card">
                                 <h4 style="color: #1b5e20; margin-bottom: 5px;">{row['title']} (ID: {row['id']})</h4>
-                                <p style="color: #4f5d54; font-size: 0.9em; margin-bottom: 10px;">
+                                <p style="color: #4f5d54; font-size: 0.9em; margin-bottom: 5px;">
                                     <b>Category:</b> {row['category']} | <b>Author:</b> {row['author'] or 'Anonymous'} | <b>Posted:</b> {row['created_at']}
                                 </p>
+                                <p style="color: #0277bd; font-size: 0.85em; margin-bottom: 10px;">{vis_label}</p>
                                 <p style="color: #263238; font-size: 1.05em;">{row['content']}</p>
                             </div>
                         """, unsafe_allow_html=True)
@@ -385,24 +387,31 @@ else:
             except Exception as e:
                 st.warning(f'Unable to load feed records. Details: {e}')
 
-        # 3. NOTICES TAB
+        # 3. NOTICES TAB (Block-Centric Visibility)
         with tab_notices:
-            st.markdown('### 📢 Official Notices & Announcements')
+            st.markdown(f'### 📢 Official Notices & Announcements ({user_block if not is_master else "All Blocks"})')
             try:
                 with engine.connect() as conn:
-                    df_notices = pd.read_sql(
-                        text("SELECT * FROM togethespace_v4_records WHERE category ILIKE :cat1 OR category ILIKE :cat2 ORDER BY created_at DESC;"),
-                        con=conn,
-                        params={"cat1": "%Notice%", "cat2": "%Announcement%"}
-                    )
+                    if is_master:
+                        df_notices = pd.read_sql(
+                            text("SELECT * FROM togethespace_v4_records WHERE category ILIKE :cat1 OR category ILIKE :cat2 ORDER BY created_at DESC;"),
+                            con=conn,
+                            params={"cat1": "%Notice%", "cat2": "%Announcement%"}
+                        )
+                    else:
+                        df_notices = pd.read_sql(
+                            text("SELECT * FROM togethespace_v4_records WHERE (category ILIKE :cat1 OR category ILIKE :cat2) AND (\"Block\" = :block OR \"Visibility\" = 'Global') ORDER BY created_at DESC;"),
+                            con=conn,
+                            params={"cat1": "%Notice%", "cat2": "%Announcement%", "block": user_block}
+                        )
                 
                 if df_notices.empty:
-                    st.info('No active notices posted at this time.')
+                    st.info('No active notices posted for your block at this time.')
                 else:
                     for idx, row in df_notices.iterrows():
                         st.markdown(f"""
                             <div class="notice-card">
-                                <h4 style="color: #0d47a1; margin-bottom: 5px;">🔔 {row['title']}</h4>
+                                <h4 style="color: #0d47a1; margin-bottom: 5px;">🔔 {row['title']} (Block: {row.get('Block', 'General')})</h4>
                                 <p style="color: #546e7a; font-size: 0.9em; margin-bottom: 10px;">
                                     <b>Posted by:</b> {row['author'] or 'Admin'} | <b>Date:</b> {row['created_at']}
                                 </p>
@@ -412,12 +421,12 @@ else:
             except Exception as e:
                 st.warning(f'Could not load notices: {e}')
 
-        # 4. COMMUNITY CHAT TAB
+        # 4. CHAT TAB
         with tab_chat:
             st.markdown('### 💬 Real-Time Community Chat Facility')
             
             with st.form('chat_form', clear_on_submit=True):
-                chat_sender = st.text_input('Your Name')
+                chat_sender = st.text_input('Your Name', value=current_user.get('Full Name', ''))
                 chat_msg = st.text_area('Message')
                 send_btn = st.form_submit_button('Send Message')
                 if send_btn:
@@ -451,7 +460,7 @@ else:
             except Exception as e:
                 st.warning(f'Chat loading error: {e}')
 
-        # 5. SOCIAL MEDIA CHANNELS TAB
+        # 5. SOCIAL CHANNELS TAB
         with tab_social:
             st.markdown('### 🌐 Specific Social Media & Communication Channels')
             col_s1, col_s2 = st.columns(2)
@@ -462,29 +471,9 @@ else:
                         <p>Instant messaging and community group broadcasts.</p>
                         <a href="https://whatsapp.com" target="_blank" style="color: #2e8b57; font-weight: bold;">Open WhatsApp &rarr;</a>
                     </div>
-                    <div class="sea-green-card">
-                        <h4>📘 Facebook Group</h4>
-                        <p>Neighborhood discussions and event photo sharing.</p>
-                        <a href="https://facebook.com" target="_blank" style="color: #2e8b57; font-weight: bold;">Visit Facebook &rarr;</a>
-                    </div>
-                    <div class="sea-green-card">
-                        <h4>📸 Instagram Handle</h4>
-                        <p>Community stories and highlights.</p>
-                        <a href="https://instagram.com" target="_blank" style="color: #2e8b57; font-weight: bold;">Follow Instagram &rarr;</a>
-                    </div>
                 """, unsafe_allow_html=True)
             with col_s2:
                 st.markdown("""
-                    <div class="sea-green-card">
-                        <h4>🐦 Twitter / X Feed</h4>
-                        <p>Real-time community updates and announcements.</p>
-                        <a href="https://twitter.com" target="_blank" style="color: #2e8b57; font-weight: bold;">Follow Twitter &rarr;</a>
-                    </div>
-                    <div class="sea-green-card">
-                        <h4>💼 LinkedIn Network</h4>
-                        <p>Professional updates and institutional notices.</p>
-                        <a href="https://linkedin.com" target="_blank" style="color: #2e8b57; font-weight: bold;">Connect LinkedIn &rarr;</a>
-                    </div>
                     <div class="sea-green-card">
                         <h4>🌐 Official Web Portal & Code</h4>
                         <p>Primary secure application hub and repository.</p>
@@ -530,14 +519,11 @@ else:
                             st.success('Password change request submitted successfully to your Block Admin for approval!')
                         else:
                             st.warning('Please enter a new password.')
-            else:
-                st.info('ℹ️ You are currently logged in as an Administrator. Use the Admin Portal tab for full administrative controls.')
 
-        # 7. BLOCK & MASTER ADMIN PORTAL TAB
+        # 7. ADMIN PORTAL TAB (Cross-Block Broadcast Requests & Approvals)
         with tab_admin:
             st.markdown('### 🔐 Administrator Portal')
             
-            # If logged in via admin portal initially, pre-select their role
             default_role_idx = 0
             pre_role = st.session_state.get('admin_preselected_role')
             roles_list = ['Block A', 'Block B', 'Block C', 'Block AE', 'Master Admin']
@@ -548,7 +534,6 @@ else:
             with col_adm1:
                 admin_block = st.selectbox('Select Role / Block', roles_list, index=default_role_idx)
             with col_adm2:
-                # If already authenticated as admin, bypass or pre-fill prompt
                 default_pwd_val = 'Master2026!' if pre_role == 'Master Admin' else ('BlockA2026!' if pre_role else '')
                 admin_pass = st.text_input('Admin Passcode', type='password', value=default_pwd_val, key='admin_pass_input')
 
@@ -574,11 +559,12 @@ else:
 
                 admin_action = st.radio('Select Admin Operation', [
                     '📢 Create Notice',
+                    '🌐 Request / Manage Cross-Block Broadcasts',
                     '🗑️ Delete Post',
                     '➕ Add Member',
                     '✏️ Edit Member',
                     '❌ Delete Member',
-                    '🔑 Password Requests & Management',
+                    '🔑 Password Requests',
                     '📋 Audit Logs',
                     '📥 Export Credentials CSV'
                 ], horizontal=True)
@@ -595,27 +581,95 @@ else:
                         n_submit = st.form_submit_button('Publish Official Notice')
                         if n_submit:
                             if n_title and n_content:
+                                post_org = admin_block if admin_block != 'Master Admin' else 'Block A'
                                 with engine.begin() as conn:
                                     conn.execute(
-                                        text('INSERT INTO togethespace_v4_records (title, category, content, author, likes) VALUES (:title, :category, :content, :author, 0)'),
-                                        {'title': n_title, 'category': n_category, 'content': n_content, 'author': f'{admin_block} Admin'}
+                                        text('INSERT INTO togethespace_v4_records (title, category, content, author, likes, "Block", "Visibility", "Broadcast_Status") VALUES (:title, :category, :content, :author, 0, :block, :visibility, :status)'),
+                                        {'title': n_title, 'category': n_category, 'content': n_content, 'author': f'{admin_block} Admin', 'block': post_org, 'visibility': 'Block-Only', 'status': 'None'}
                                     )
-                                st.success('Official notice broadcast successfully!')
+                                st.success('Official notice published for your block!')
                                 st.rerun()
                             else:
                                 st.warning('Please fill in title and content.')
 
-                # 2. DELETE POST
+                # 2. REQUEST / MANAGE CROSS-BLOCK BROADCASTS
+                elif admin_action == '🌐 Request / Manage Cross-Block Broadcasts':
+                    st.markdown('#### 🌐 Cross-Block Broadcast Management')
+                    if admin_block == 'Master Admin':
+                        st.info('👑 Master Admin: Review and approve/reject pending cross-block broadcast requests from block admins.')
+                        try:
+                            with engine.connect() as conn:
+                                b_reqs = pd.read_sql(text('SELECT * FROM togethespace_v4_records WHERE "Broadcast_Status" = \'Pending\' ORDER BY created_at DESC;'), con=conn)
+                            
+                            if b_reqs.empty:
+                                st.info('No pending broadcast requests from block admins.')
+                            else:
+                                for idx, req in b_reqs.iterrows():
+                                    st.markdown(f"""
+                                        <div class="admin-card">
+                                            <b>Post ID:</b> {req['id']} | <b>Block:</b> {req.get('Block')} | <b>Author:</b> {req['author']}<br>
+                                            <b>Title:</b> {req['title']}<br>
+                                            <b>Content:</b> {req['content']}
+                                        </div>
+                                    """, unsafe_allow_html=True)
+                                    col_app_b, col_rej_b = st.columns(2)
+                                    with col_app_b:
+                                        if st.button(f'🌐 Approve Broadcast for Post #{req["id"]}', key=f'app_b_{req["id"]}'):
+                                            with engine.begin() as conn:
+                                                conn.execute(
+                                                    text('UPDATE togethespace_v4_records SET "Visibility" = \'Global\', "Broadcast_Status" = \'Approved\' WHERE id = :id'),
+                                                    {'id': int(req['id'])}
+                                                )
+                                            st.success(f'Post #{req["id"]} is now globally broadcasted to all blocks!')
+                                            st.rerun()
+                                    with col_rej_b:
+                                        if st.button(f'❌ Reject Broadcast #{req["id"]}', key=f'rej_b_{req["id"]}'):
+                                            with engine.begin() as conn:
+                                                conn.execute(
+                                                    text('UPDATE togethespace_v4_records SET "Broadcast_Status" = \'Rejected\' WHERE id = :id'),
+                                                    {'id': int(req['id'])}
+                                                )
+                                            st.warning(f'Broadcast request rejected for Post #{req["id"]}.')
+                                            st.rerun()
+                        except Exception as e:
+                            st.warning(f'Error loading broadcast requests: {e}')
+                    else:
+                        st.info(f'🏢 Block Admin ({admin_block}): Select one of your block posts below to request Master Admin approval for global cross-block viewing.')
+                        try:
+                            with engine.connect() as conn:
+                                block_posts = pd.read_sql(text('SELECT id, title, category, "Visibility", "Broadcast_Status" FROM togethespace_v4_records WHERE "Block" = :block ORDER BY created_at DESC;'), con=conn, params={'block': admin_block})
+                            
+                            if block_posts.empty:
+                                st.info('No posts found in your block.')
+                            else:
+                                p_choice = st.selectbox('Select Post to Request Broadcast', block_posts.apply(lambda r: f"ID {r['id']}: {r['title']} (Visibility: {r['Visibility']}, Status: {r['Broadcast_Status']})", axis=1))
+                                if p_choice:
+                                    p_id = int(p_choice.split(':')[0].replace('ID ', ''))
+                                    if st.button('🚀 Submit Request to Master Admin for Cross-Block Broadcast'):
+                                        with engine.begin() as conn:
+                                            conn.execute(
+                                                text('UPDATE togethespace_v4_records SET "Broadcast_Status" = \'Pending\' WHERE id = :id'),
+                                                {'id': p_id}
+                                            )
+                                        st.success('Broadcast request submitted to Master Admin successfully!')
+                                        st.rerun()
+                        except Exception as e:
+                            st.warning(f'Error loading block posts: {e}')
+
+                # 3. DELETE POST
                 elif admin_action == '🗑️ Delete Post':
                     st.markdown('#### Delete Post by ID')
                     try:
                         with engine.connect() as conn:
-                            df_posts = pd.read_sql(text('SELECT id, title, category, author, created_at FROM togethespace_v4_records ORDER BY created_at DESC;'), con=conn)
+                            if admin_block == 'Master Admin':
+                                df_posts = pd.read_sql(text('SELECT id, title, category, author, "Block", created_at FROM togethespace_v4_records ORDER BY created_at DESC;'), con=conn)
+                            else:
+                                df_posts = pd.read_sql(text('SELECT id, title, category, author, "Block", created_at FROM togethespace_v4_records WHERE "Block" = :block ORDER BY created_at DESC;'), con=conn, params={'block': admin_block})
                         
                         if df_posts.empty:
                             st.info('No posts available to delete.')
                         else:
-                            post_to_delete = st.selectbox('Select Post to Remove', df_posts.apply(lambda r: f"ID {r['id']}: [{r['category']}] {r['title']} (by {r['author']})", axis=1))
+                            post_to_delete = st.selectbox('Select Post to Remove', df_posts.apply(lambda r: f"ID {r['id']}: [{r['Block']}] {r['title']} (by {r['author']})", axis=1))
                             if st.button('🗑️ Delete Selected Post', type='primary'):
                                 post_id = int(post_to_delete.split(':')[0].replace('ID ', ''))
                                 with engine.begin() as conn:
@@ -625,7 +679,7 @@ else:
                     except Exception as e:
                         st.warning(f'Error loading posts: {e}')
 
-                # 3. ADD MEMBER
+                # 4. ADD MEMBER
                 elif admin_action == '➕ Add Member':
                     st.markdown('#### Add New Member Record')
                     with st.form('admin_add_dir', clear_on_submit=True):
@@ -674,7 +728,7 @@ else:
                             else:
                                 st.warning('Full Name is required.')
 
-                # 4. EDIT MEMBER
+                # 5. EDIT MEMBER
                 elif admin_action == '✏️ Edit Member':
                     st.markdown('#### Edit Existing Member')
                     edit_query = st.text_input('Search Member Name to Edit', '')
@@ -712,7 +766,7 @@ else:
                                         st.success('Member record updated successfully!')
                                         st.rerun()
 
-                # 5. DELETE MEMBER
+                # 6. DELETE MEMBER
                 elif admin_action == '❌ Delete Member':
                     st.markdown('#### Remove Member Record')
                     del_query = st.text_input('Search Member Name to Delete', '')
@@ -735,61 +789,9 @@ else:
                                     st.success(f'Member ID {d_id} deleted successfully.')
                                     st.rerun()
 
-                # 6. PASSWORD REQUESTS & MANAGEMENT
-                elif admin_action == '🔑 Password Requests & Management':
-                    st.markdown('#### 🔑 Resident Password Management & Change Requests')
-                    
-                    if admin_block == 'Master Admin':
-                        st.info('👑 Master Admin Mode: You can change any resident or block admin password instantly without approval, and approve pending requests.')
-                    else:
-                        st.info(f'🏢 Block Admin Mode ({admin_block}): You can manage residents in **{admin_block}** (including yourself). Submitting a password change requires Master Admin approval.')
-
-                    pw_query = st.text_input('Search Member by Name or User ID', '')
-                    if pw_query:
-                        with engine.connect() as conn:
-                            if admin_block != 'Master Admin':
-                                pw_df = pd.read_sql(text('SELECT id, "Full Name", "User ID", "Organization", "Password" FROM togethespace_v4_directory WHERE "Organization" = :block AND ("Full Name" ILIKE :q OR "User ID" ILIKE :q) LIMIT 20;'), con=conn, params={"block": admin_block, "q": f"%{pw_query}%"})
-                            else:
-                                pw_df = pd.read_sql(text('SELECT id, "Full Name", "User ID", "Organization", "Password" FROM togethespace_v4_directory WHERE "Full Name" ILIKE :q OR "User ID" ILIKE :q LIMIT 20;'), con=conn, params={"q": f"%{pw_query}%"})
-                        
-                        if pw_df.empty:
-                            st.warning('No matching records found.')
-                        else:
-                            target_choice = st.selectbox('Select Resident / Member', pw_df.apply(lambda r: f"ID {r['id']} | {r['Full Name']} (User ID: {r.get('User ID')}) [{r['Organization']}]", axis=1))
-                            if target_choice:
-                                t_id = int(target_choice.split('|')[0].replace('ID ', '').strip())
-                                t_row = pw_df[pw_df['id'] == t_id].iloc[0]
-                                
-                                with st.form('pwd_change_form'):
-                                    new_pwd = st.text_input('New Password', type='password')
-                                    submit_btn = st.form_submit_button('Execute or Submit Request')
-                                    
-                                    if submit_btn:
-                                        if new_pwd:
-                                            with engine.begin() as conn:
-                                                if admin_block == 'Master Admin':
-                                                    conn.execute(
-                                                        text('UPDATE togethespace_v4_directory SET "Password" = :pwd WHERE id = :id'),
-                                                        {'pwd': new_pwd, 'id': t_id}
-                                                    )
-                                                    conn.execute(
-                                                        text('INSERT INTO togethespace_v4_password_logs (changed_by, target_userid, action_type, details) VALUES (:by, :target, :action, :details)'),
-                                                        {'by': 'Master Admin', 'target': str(t_row.get('User ID', t_row['Full Name'])), 'action': 'Direct Password Change', 'details': f'Password updated for {t_row["Full Name"]} by Master Admin.'}
-                                                    )
-                                                    st.success('Password updated successfully and logged!')
-                                                    st.rerun()
-                                                else:
-                                                    conn.execute(
-                                                        text('INSERT INTO togethespace_v4_password_requests (requested_by, target_userid, target_name, block, new_password, status) VALUES (:by, :target, :name, :block, :pwd, :status)'),
-                                                        {'by': f'{admin_block} Admin', 'target': str(t_row.get('User ID', t_row['Full Name'])), 'name': t_row['Full Name'], 'block': admin_block, 'pwd': new_pwd, 'status': 'Pending'}
-                                                    )
-                                                    st.success('Password change request submitted successfully to Master Admin for acceptance!')
-                                                    st.rerun()
-                                        else:
-                                            st.warning('Please enter a new password.')
-
-                    st.markdown('---')
-                    st.markdown('#### 📋 Pending Change Requests')
+                # 7. PASSWORD REQUESTS
+                elif admin_action == '🔑 Password Requests':
+                    st.markdown('#### 🔑 Resident Password Requests')
                     try:
                         with engine.connect() as conn:
                             if admin_block == 'Master Admin':
@@ -839,7 +841,7 @@ else:
                     except Exception as e:
                         st.warning(f'Could not load requests: {e}')
 
-                # 7. AUDIT LOGS
+                # 8. AUDIT LOGS
                 elif admin_action == '📋 Audit Logs':
                     st.markdown('#### 📜 Password Change & Login Audit Logs')
                     try:
@@ -853,11 +855,9 @@ else:
                     except Exception as e:
                         st.info('Audit log table will populate once logins or password changes are processed.')
 
-                # 8. EXPORT CREDENTIALS CSV
+                # 9. EXPORT CREDENTIALS CSV
                 elif admin_action == '📥 Export Credentials CSV':
                     st.markdown('#### 📥 Download Credentials CSV')
-                    st.markdown('Export user IDs and passwords for all members in your authorized scope.')
-                    
                     try:
                         with engine.connect() as conn:
                             if admin_block == 'Master Admin':
