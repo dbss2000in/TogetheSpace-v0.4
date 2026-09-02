@@ -133,7 +133,7 @@ else:
         with engine.begin() as conn:
             conn.execute(text('SELECT 1;'))
             
-            # 1. Master Directory Table
+            # 1. Master Directory Table with Employment Status & Qualification columns
             conn.execute(text("""
                 CREATE TABLE IF NOT EXISTS togethespace_v4_directory (
                     id SERIAL PRIMARY KEY,
@@ -162,9 +162,15 @@ else:
                     "Emergency Contact Name" VARCHAR(150),
                     "Emergency Contact Phone" VARCHAR(50),
                     "Bio" TEXT,
+                    "Employment_Status" VARCHAR(50) DEFAULT 'Neutral',
+                    "Qualification" TEXT,
                     "Is Favorite" BOOLEAN DEFAULT FALSE
                 );
             """))
+
+            # Ensure columns exist if table was already created previously
+            conn.execute(text('ALTER TABLE togethespace_v4_directory ADD COLUMN IF NOT EXISTS "Employment_Status" VARCHAR(50) DEFAULT \'Neutral\';'))
+            conn.execute(text('ALTER TABLE togethespace_v4_directory ADD COLUMN IF NOT EXISTS "Qualification" TEXT;'))
 
             # 2. Community Records / Feed & Notices Table
             conn.execute(text("""
@@ -311,32 +317,18 @@ else:
                 );
             """))
 
-            # 13. Job Seekers & Employment Portal Table
-            conn.execute(text("""
-                CREATE TABLE IF NOT EXISTS togethespace_v4_job_seekers (
-                    id SERIAL PRIMARY KEY,
-                    applicant_name VARCHAR(150),
-                    age INT,
-                    skills TEXT,
-                    preferred_role VARCHAR(150),
-                    locked_employer VARCHAR(150) DEFAULT '',
-                    status VARCHAR(50) DEFAULT 'Available',
-                    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
-                );
-            """))
-
-            # 14. Job Bids Table (Daily Wage Bidding)
+            # 13. Job Bids Table (Daily Wage Bidding for Hiring)
             conn.execute(text("""
                 CREATE TABLE IF NOT EXISTS togethespace_v4_job_bids (
                     id SERIAL PRIMARY KEY,
-                    job_seeker_id INT,
+                    job_seeker_name VARCHAR(150),
                     employer_name VARCHAR(150),
                     daily_wage NUMERIC(10,2),
                     created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
                 );
             """))
 
-            # 15. Event Invitations Table
+            # 14. Event Invitations Table
             conn.execute(text("""
                 CREATE TABLE IF NOT EXISTS togethespace_v4_event_invites (
                     id SERIAL PRIMARY KEY,
@@ -400,7 +392,7 @@ else:
                 'Email': 'aarav.mukherjee@togethespace.local',
                 'Phone Number': '+91-9876543210',
                 'Address': 'Block A Control Office, TogetheSpace',
-                'Blood Group': 'O+', 'Allergies': 'None', 'Avatar': '', 'Facebook': '', 'Instagram': '', 'Twitter': '', 'LinkedIn': '', 'Custom_Social_Name': '', 'Custom_Social_URL': '', 'Social_Approved': True
+                'Blood Group': 'O+', 'Allergies': 'None', 'Avatar': '', 'Facebook': '', 'Instagram': '', 'Twitter': '', 'LinkedIn': '', 'Custom_Social_Name': '', 'Custom_Social_URL': '', 'Employment_Status': 'Neutral', 'Qualification': 'Administrator', 'Social_Approved': True
             },
             'Block B': {
                 'Full Name': 'Priya Sharma',
@@ -410,7 +402,7 @@ else:
                 'Email': 'priya.sharma@togethespace.local',
                 'Phone Number': '+91-9876543211',
                 'Address': 'Block B Control Office, TogetheSpace',
-                'Blood Group': 'A+', 'Allergies': 'None', 'Avatar': '', 'Facebook': '', 'Instagram': '', 'Twitter': '', 'LinkedIn': '', 'Custom_Social_Name': '', 'Custom_Social_URL': '', 'Social_Approved': True
+                'Blood Group': 'A+', 'Allergies': 'None', 'Avatar': '', 'Facebook': '', 'Instagram': '', 'Twitter': '', 'LinkedIn': '', 'Custom_Social_Name': '', 'Custom_Social_URL': '', 'Employment_Status': 'Neutral', 'Qualification': 'Administrator', 'Social_Approved': True
             },
             'Block C': {
                 'Full Name': 'Rohan Verma',
@@ -420,7 +412,7 @@ else:
                 'Email': 'rohan.verma@togethespace.local',
                 'Phone Number': '+91-9876543212',
                 'Address': 'Block C Control Office, TogetheSpace',
-                'Blood Group': 'B+', 'Allergies': 'Dust', 'Avatar': '', 'Facebook': '', 'Instagram': '', 'Twitter': '', 'LinkedIn': '', 'Custom_Social_Name': '', 'Custom_Social_URL': '', 'Social_Approved': True
+                'Blood Group': 'B+', 'Allergies': 'Dust', 'Avatar': '', 'Facebook': '', 'Instagram': '', 'Twitter': '', 'LinkedIn': '', 'Custom_Social_Name': '', 'Custom_Social_URL': '', 'Employment_Status': 'Neutral', 'Qualification': 'Administrator', 'Social_Approved': True
             },
             'Block AE': {
                 'Full Name': 'Ananya Das',
@@ -430,7 +422,7 @@ else:
                 'Email': 'ananya.das@togethespace.local',
                 'Phone Number': '+91-9876543213',
                 'Address': 'Block AE Control Office, TogetheSpace',
-                'Blood Group': 'AB+', 'Allergies': 'None', 'Avatar': '', 'Facebook': '', 'Instagram': '', 'Twitter': '', 'LinkedIn': '', 'Custom_Social_Name': '', 'Custom_Social_URL': '', 'Social_Approved': True
+                'Blood Group': 'AB+', 'Allergies': 'None', 'Avatar': '', 'Facebook': '', 'Instagram': '', 'Twitter': '', 'LinkedIn': '', 'Custom_Social_Name': '', 'Custom_Social_URL': '', 'Employment_Status': 'Neutral', 'Qualification': 'Administrator', 'Social_Approved': True
             },
             'Master Admin': {
                 'Full Name': 'Vikramaditya Roy',
@@ -440,7 +432,7 @@ else:
                 'Email': 'master.admin@togethespace.local',
                 'Phone Number': '+91-9999999999',
                 'Address': 'Central Governance Headquarters, TogetheSpace',
-                'Blood Group': 'B-', 'Allergies': 'None', 'Avatar': '', 'Facebook': '', 'Instagram': '', 'Twitter': '', 'LinkedIn': '', 'Custom_Social_Name': '', 'Custom_Social_URL': '', 'Social_Approved': True
+                'Blood Group': 'B-', 'Allergies': 'None', 'Avatar': '', 'Facebook': '', 'Instagram': '', 'Twitter': '', 'LinkedIn': '', 'Custom_Social_Name': '', 'Custom_Social_URL': '', 'Employment_Status': 'Neutral', 'Qualification': 'Super Administrator', 'Social_Approved': True
             }
         }
 
@@ -612,7 +604,7 @@ else:
                 "📰 AI Top News Corner",
                 "🎓 AI Weekly Learning Corner",
                 "🛒 Classifieds & Marketplace (Auction)",
-                "👔 Job Seeker & Employment Portal",
+                "👔 Job Match & Employment Directory",
                 "✉️ Personalized Event Invitations",
                 "🛠️ Helpdesk & Tickets",
                 "📅 Facility Booking & Utilities",
@@ -661,13 +653,13 @@ else:
 
         # --- ROUTING BASED ON PUSH BUTTON SELECTION ---
 
-        # 1. RESIDENT DIRECTORY
+        # 1. RESIDENT DIRECTORY (With Employment Status & Qualification Display)
         if menu_selection == "📋 Resident Directory":
             st.markdown(f'### 📋 Resident & Member Directory Datasheet ({user_block})')
             
             col_search, col_filter = st.columns([3, 1])
             with col_search:
-                search_query = st.text_input('🔍 Search Directory by Name, Address, Phone, or Notes', '')
+                search_query = st.text_input('🔍 Search Directory by Name, Address, Phone, Notes, or Qualification', '')
             with col_filter:
                 try:
                     with engine.connect() as conn:
@@ -684,7 +676,7 @@ else:
                             query = text("""
                                 SELECT * FROM togethespace_v4_directory 
                                 WHERE "Organization" = :block AND (
-                                    "Full Name" ILIKE :q OR "Address" ILIKE :q OR "Phone Number" ILIKE :q OR "Notes" ILIKE :q OR "Medical Conditions" ILIKE :q
+                                    "Full Name" ILIKE :q OR "Address" ILIKE :q OR "Phone Number" ILIKE :q OR "Notes" ILIKE :q OR "Medical Conditions" ILIKE :q OR "Qualification" ILIKE :q
                                 )
                                 ORDER BY "Full Name" ASC;
                             """)
@@ -692,7 +684,7 @@ else:
                         else:
                             query = text("""
                                 SELECT * FROM togethespace_v4_directory 
-                                WHERE "Full Name" ILIKE :q OR "Address" ILIKE :q OR "Phone Number" ILIKE :q OR "Notes" ILIKE :q OR "Medical Conditions" ILIKE :q
+                                WHERE "Full Name" ILIKE :q OR "Address" ILIKE :q OR "Phone Number" ILIKE :q OR "Notes" ILIKE :q OR "Medical Conditions" ILIKE :q OR "Qualification" ILIKE :q
                                 ORDER BY "Full Name" ASC;
                             """)
                             df_dir = pd.read_sql(query, con=conn, params={"q": f"%{search_query}%"})
@@ -712,6 +704,11 @@ else:
                         fav_badge = '⭐ [Favorite]' if str(row.get('Is Favorite')).lower() in ['true', '1', 'yes'] else ''
                         org_badge = f"🏢 <b>Block:</b> {row.get('Organization')}" if row.get('Organization') else ''
                         user_id_badge = f" | 👤 <b>User ID:</b> {row.get('User ID')}" if row.get('User ID') else ''
+                        emp_status = row.get('Employment_Status') or 'Neutral'
+                        status_color = "#1b5e20" if emp_status == "Job Seeker" else ("#e65100" if emp_status == "Want to Hire" else "#65676b")
+                        emp_badge = f"<span style='background-color: {status_color}; color: white; padding: 2px 8px; border-radius: 4px; font-size: 0.8em; font-weight: 600;'>💼 {emp_status}</span>"
+                        qual_str = f"<br>🎓 <b>Qualification / Skill:</b> {row.get('Qualification')}" if row.get('Qualification') else ""
+
                         map_url = f"https://www.google.com/maps/search/?api=1&query={urllib.parse.quote(str(row.get('Address', '')))}"
                         avatar_html = get_avatar_html(row.get('Full Name'), row.get('Avatar'), size=50)
                         
@@ -735,12 +732,12 @@ else:
                                 <div style="display: flex; align-items: center; margin-bottom: 6px;">
                                     {avatar_html}
                                     <div>
-                                        <h3 style="color: #0f3812; margin-bottom: 0px; display: inline-block;">{row.get('Full Name')}</h3> {fav_badge}<br>
+                                        <h3 style="color: #0f3812; margin-bottom: 0px; display: inline-block;">{row.get('Full Name')}</h3> {fav_badge} {emp_badge}<br>
                                         <span style="color: #1a1a1a; font-size: 0.9em; font-weight: 600;">{org_badge} {user_id_badge}</span>
                                     </div>
                                 </div>
                                 <p style="color: #1a1a1a; font-size: 0.95em; margin-bottom: 10px;">
-                                    <b>Bio:</b> {row.get('Bio') or 'N/A'}
+                                    <b>Bio:</b> {row.get('Bio') or 'N/A'} {qual_str}
                                 </p>
                                 <hr style="margin: 8px 0; border-color: #a5d6a7;">
                                 <p style="font-size: 0.9em; margin: 4px 0;">
@@ -1100,7 +1097,7 @@ else:
                     </div>
                 """, unsafe_allow_html=True)
 
-        # 8. AI WEEKLY LEARNING CORNER (AI Daily Automated Course Generation & 24-Hour Cycle)
+        # 8. AI WEEKLY LEARNING CORNER
         elif menu_selection == "🎓 AI Weekly Learning Corner":
             st.markdown("### 🎓 AI Daily Automated Course Generation (52-Week Masterclass)")
             st.info("Automated daily rollout: Fresh daily course material is generated dynamically every 24 hours (based on calendar day) with instant multilingual translation and voice read-aloud.")
@@ -1108,7 +1105,6 @@ else:
             lang_choice = st.selectbox("Select Language / ভাষা / भाषा", ["English", "Bengali (বাংলা)", "Hindi (हिन्दी)"])
             course_choice = st.selectbox("Select Learning Course", ["Yoga & Mindfulness", "Artisan Cooking", "Creative Storytelling", "Python Code Making", "Crochet & Needlework", "Classical & Modern Song", "Prose & Poetry Writing", "Cricket Masterclass", "Football Tactics"])
             
-            # Automated 24-hour cycle / day of year calculation
             day_of_year = datetime.now().timetuple().yday
             auto_week_num = ((day_of_year - 1) // 7) % 52 + 1
             
@@ -1178,7 +1174,7 @@ else:
                         else:
                             st.warning("Please complete the exam questions.")
 
-        # 9. CLASSIFIEDS & MARKETPLACE (Live Auction / Bidding System)
+        # 9. CLASSIFIEDS & MARKETPLACE (Live Auction / Bidding System with Fixed Syntax Error)
         elif menu_selection == "🛒 Classifieds & Marketplace (Auction)":
             st.markdown("### 🛒 Community Classifieds & Marketplace (Live Bidding Auction)")
             st.info("Buy, sell, or rent items securely. Prospective buyers place daily/fixed price bids; only the highest current bid is displayed, automatically replacing lower bids.")
@@ -1188,7 +1184,7 @@ else:
                     c_type = st.selectbox("Listing Type", ["Sell", "Rent"])
                     c_title = st.text_input("Item Title")
                     c_desc = st.text_area("Item Description & Details")
-                    c_base = st.number_input("Base Price / Minimum Bid (₹)", min_value=0.00, value=300.00, step50.00 if 'step' in dir() else 50.00)
+                    c_base = st.number_input("Base Price / Minimum Bid (₹)", min_value=0.00, value=300.00, step=50.00)
                     c_thumb = st.file_uploader("Upload Lightweight Thumbnail", type=['jpg', 'jpeg', 'png'])
                     c_sub = st.form_submit_button("Publish Listing & Auction")
                     if c_sub:
@@ -1244,88 +1240,83 @@ else:
             except Exception as e:
                 st.warning(f"Error loading marketplace: {e}")
 
-        # 10. JOB SEEKER & EMPLOYMENT PORTAL
-        elif menu_selection == "👔 Job Seeker & Employment Portal":
-            st.markdown("### 👔 Community Job Seeker & Employment Portal")
-            st.info("Residents (ages 18 to 118) seeking work can submit structured biodata profiles. Employers submit daily wage bids; job seekers can lock in their preferred employer and connect directly via directory contact.")
+        # 10. JOB MATCH & EMPLOYMENT DIRECTORY (Integrated via Profile Dropdown & Free Text Qualification)
+        elif menu_selection == "👔 Job Match & Employment Directory":
+            st.markdown("### 👔 Community Job Match & Employment Directory")
+            st.info("Match job seekers with employers across blocks. Update your employment status ('Job Seeker', 'Want to Hire', or 'Neutral') and free-text qualification in your profile settings to appear here instantly.")
             
-            with st.expander("➕ Submit Job Seeker Biodata Portfolio", expanded=False):
-                with st.form("job_seeker_form", clear_on_submit=True):
-                    js_age = st.number_input("Age", min_value=18, max_value=118, value=30)
-                    js_skills = st.text_area("Skills & Experience Details")
-                    js_role = st.text_input("Preferred Role / Job Type (e.g. Cook, Guard, Tutor, Driver)")
-                    if st.form_submit_button("Publish Biodata Portfolio"):
-                        if js_skills and js_role:
-                            with engine.begin() as conn:
-                                conn.execute(
-                                    text('INSERT INTO togethespace_v4_job_seekers (applicant_name, age, skills, preferred_role, status) VALUES (:an, :age, :sk, :pr, \'Available\')'),
-                                    {'an': current_user.get('Full Name'), 'age': js_age, 'sk': js_skills, 'pr': js_role}
-                                )
-                            st.success("Biodata portfolio published successfully!")
-                            st.rerun()
-                        else:
-                            st.warning("Please fill in skills and preferred role.")
+            with st.expander("✏️ Update My Employment Status & Qualification", expanded=False):
+                with st.form("my_employment_profile_form"):
+                    curr_status = current_user.get('Employment_Status', 'Neutral')
+                    status_idx = ["Job Seeker", "Want to Hire", "Neutral"].index(curr_status) if curr_status in ["Job Seeker", "Want to Hire", "Neutral"] else 2
+                    
+                    new_emp_status = st.selectbox("My Employment Status", options=["Job Seeker", "Want to Hire", "Neutral"], index=status_idx)
+                    new_qual = st.text_input("My Qualification / Specialization (e.g. Graduation, Electrician, Cook, Barber, Tutor)", value=str(current_user.get('Qualification', '')))
+                    
+                    if st.form_submit_button("Save Employment Profile"):
+                        with engine.begin() as conn:
+                            conn.execute(
+                                text('UPDATE togethespace_v4_directory SET "Employment_Status" = :es, "Qualification" = :q WHERE "User ID" = :uid OR "Full Name" = :name'),
+                                {'es': new_emp_status, 'q': new_qual, 'uid': current_user.get('User ID'), 'name': current_user.get('Full Name')}
+                            )
+                        current_user['Employment_Status'] = new_emp_status
+                        current_user['Qualification'] = new_qual
+                        st.success("Employment profile updated successfully! Your listing is now active.")
+                        st.rerun()
 
             st.markdown("---")
-            st.markdown("#### 📋 Listed Job Seekers & Competitive Daily Wage Bidding")
-            try:
-                with engine.connect() as conn:
-                    seekers_df = pd.read_sql(text('SELECT * FROM togethespace_v4_job_seekers ORDER BY created_at DESC;'), con=conn)
-                
-                if seekers_df.empty:
-                    st.info("No job seekers currently registered.")
-                else:
-                    for _, srow in seekers_df.iterrows():
-                        # Fetch bids for this seeker
-                        with engine.connect() as conn:
-                            bids_df = pd.read_sql(text('SELECT * FROM togethespace_v4_job_bids WHERE job_seeker_id = :jid ORDER BY daily_wage DESC;'), con=conn, params={'jid': srow['id']})
-                        
-                        top_bid_text = "No employer bids yet."
-                        max_wage = 0.00
-                        if not bids_df.empty:
-                            top_bid = bids_df.iloc[0]
-                            max_wage = float(top_bid['daily_wage'])
-                            top_bid_text = f"Top Offer: ₹{max_wage:.2f}/day by {top_bid['employer_name']}"
+            col_js, col_jh = st.columns(2)
+            
+            with col_js:
+                st.markdown("#### 🔍 Active Job Seekers")
+                try:
+                    with engine.connect() as conn:
+                        seekers_df = pd.read_sql(text('SELECT "Full Name", "Organization", "Phone Number", "Qualification", "Bio" FROM togethespace_v4_directory WHERE "Employment_Status" = \'Job Seeker\' ORDER BY "Full Name" ASC;'), con=conn)
+                    
+                    if seekers_df.empty:
+                        st.info("No job seekers registered currently.")
+                    else:
+                        for _, srow in seekers_df.iterrows():
+                            st.markdown(f"""
+                                <div class="sea-green-card">
+                                    <h4>👤 {srow['Full Name']} ({srow['Organization']})</h4>
+                                    <p>🎓 <b>Qualification:</b> {srow['Qualification'] or 'N/A'}</p>
+                                    <p>📝 <b>Bio:</b> {srow['Bio'] or 'N/A'}</p>
+                                    <p>📞 <b>Direct Contact:</b> <a href="tel:{srow['Phone Number']}">{srow['Phone Number']}</a></p>
+                                </div>
+                            """, unsafe_allow_html=True)
+                except Exception as e:
+                    st.warning(f"Error loading seekers: {e}")
 
-                        locked_status = f"<br>🔒 <b>Locked Employer:</b> {srow['locked_employer']}" if srow.get('locked_employer') else ""
+            with col_jh:
+                st.markdown("#### 💼 Want to Hire / Employers & Daily Wage Bidding")
+                try:
+                    with engine.connect() as conn:
+                        hirers_df = pd.read_sql(text('SELECT "Full Name", "Organization", "Phone Number", "Qualification", "Bio" FROM togethespace_v4_directory WHERE "Employment_Status" = \'Want to Hire\' ORDER BY "Full Name" ASC;'), con=conn)
+                    
+                    if hirers_df.empty:
+                        st.info("No employers currently looking to hire.")
+                    else:
+                        for _, hrow in hirers_df.iterrows():
+                            st.markdown(f"""
+                                <div class="admin-card">
+                                    <h4>🏢 {hrow['Full Name']} ({hrow['Organization']})</h4>
+                                    <p>📋 <b>Requirement / Info:</b> {hrow['Qualification'] or 'N/A'}</p>
+                                    <p>📞 <b>Direct Contact:</b> <a href="tel:{hrow['Phone Number']}">{hrow['Phone Number']}</a></p>
+                                </div>
+                            """, unsafe_allow_html=True)
 
-                        st.markdown(f"""
-                            <div class="sea-green-card">
-                                <h4>👔 {srow['applicant_name']} (Age: {srow['age']}) — Role: {srow['preferred_role']} <span style="font-size:0.7em; background:#1b5e20; color:white; padding:2px 6px; border-radius:4px;">{srow['status']}</span></h4>
-                                <p style="color: #111111;"><b>Skills & Biodata:</b> {srow['skills']}</p>
-                                <p style="color: #0d47a1; font-weight: 600;">💰 {top_bid_text}</p>
-                                {locked_status}
-                            </div>
-                        """, unsafe_allow_html=True)
-
-                        # Employer wage bidding form
-                        with st.form(f"wage_bid_form_{srow['id']}"):
-                            offered_wage = st.number_input("Offer Daily Wage (₹ / day)", min_value=100.00, value=500.00, step=50.00, key=f"wage_{srow['id']}")
-                            if st.form_submit_button("Submit Daily Wage Offer"):
-                                with engine.begin() as conn:
-                                    conn.execute(
-                                        text('INSERT INTO togethespace_v4_job_bids (job_seeker_id, employer_name, daily_wage) VALUES (:jid, :en, :dw)'),
-                                        {'jid': srow['id'], 'en': current_user.get('Full Name'), 'dw': offered_wage}
-                                    )
-                                st.success(f"Daily wage offer of ₹{offered_wage} submitted successfully!")
-                                st.rerun()
-
-                        # If current user is the job seeker, allow locking employer
-                        if current_user.get('Full Name') == srow['applicant_name'] and not srow.get('locked_employer'):
-                            if not bids_df.empty:
-                                emp_options = bids_df['employer_name'].unique().tolist()
-                                with st.form(f"lock_employer_form_{srow['id']}"):
-                                    chosen_emp = st.selectbox("Lock In Preferred Employer", options=emp_options)
-                                    if st.form_submit_button("Lock Employer & Connect"):
-                                        with engine.begin() as conn:
-                                            conn.execute(
-                                                text('UPDATE togethespace_v4_job_seekers SET locked_employer = :le, status = \'Hired\' WHERE id = :id'),
-                                                {'le': chosen_emp, 'id': srow['id']}
-                                            )
-                                        st.success(f"Employer {chosen_emp} locked in! Contact details are available in the directory.")
-                                        st.rerun()
-            except Exception as e:
-                st.warning(f"Error loading job seekers: {e}")
+                            with st.form(f"wage_bid_form_{hrow['Full Name']}"):
+                                wage_offer = st.number_input(f"Offer Daily Wage (₹ / day) for {hrow['Full Name']}", min_value=100.00, value=500.00, step=50.00)
+                                if st.form_submit_button("Submit Daily Wage Offer & Lock In"):
+                                    with engine.begin() as conn:
+                                        conn.execute(
+                                            text('INSERT INTO togethespace_v4_job_bids (job_seeker_name, employer_name, daily_wage) VALUES (:js, :en, :dw)'),
+                                            {'js': hrow['Full Name'], 'en': current_user.get('Full Name'), 'dw': wage_offer}
+                                        )
+                                    st.success(f"Offer of ₹{wage_offer}/day submitted to {hrow['Full Name']}! You can connect directly via directory phone number.")
+                except Exception as e:
+                    st.warning(f"Error loading hirers: {e}")
 
         # 11. PERSONALIZED MASS EVENT INVITATIONS
         elif menu_selection == "✉️ Personalized Event Invitations":
