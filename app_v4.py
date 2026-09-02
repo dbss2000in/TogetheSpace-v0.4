@@ -11,19 +11,19 @@ st.set_page_config(
     layout='wide',
 )
 
-# --- FACEBOOK & SEA GREEN THEME CUSTOM STYLING ---
+# --- SEA GREEN CARDS & FACEBOOK/MESSENGER HYBRID STYLING ---
 st.markdown("""
     <style>
     .main {
         background-color: #f0f2f5;
     }
     .sea-green-card {
-        background-color: #ffffff;
-        border: 1px solid #e4e6eb;
+        background-color: #eaf4ed;
+        border-left: 6px solid #2e8b57;
         border-radius: 10px;
         padding: 16px;
         margin-bottom: 12px;
-        box-shadow: 0 1px 2px rgba(0, 0, 0, 0.1);
+        box-shadow: 0 1px 3px rgba(46, 139, 87, 0.15);
     }
     .notice-card {
         background-color: #e7f3ff;
@@ -107,6 +107,21 @@ else:
             """))
             conn.execute(text("""
                 ALTER TABLE togethespace_v4_directory ADD COLUMN IF NOT EXISTS "Avatar" TEXT;
+            """))
+            conn.execute(text("""
+                ALTER TABLE togethespace_v4_directory ADD COLUMN IF NOT EXISTS "Facebook" TEXT;
+            """))
+            conn.execute(text("""
+                ALTER TABLE togethespace_v4_directory ADD COLUMN IF NOT EXISTS "Instagram" TEXT;
+            """))
+            conn.execute(text("""
+                ALTER TABLE togethespace_v4_directory ADD COLUMN IF NOT EXISTS "Twitter" TEXT;
+            """))
+            conn.execute(text("""
+                ALTER TABLE togethespace_v4_directory ADD COLUMN IF NOT EXISTS "LinkedIn" TEXT;
+            """))
+            conn.execute(text("""
+                ALTER TABLE togethespace_v4_directory ADD COLUMN IF NOT EXISTS "Social_Approved" BOOLEAN DEFAULT TRUE;
             """))
 
         def hash_password(plain_text_password):
@@ -197,7 +212,12 @@ else:
                                 'Address': 'Admin Control Center',
                                 'Blood Group': 'N/A',
                                 'Allergies': 'N/A',
-                                'Avatar': ''
+                                'Avatar': '',
+                                'Facebook': '',
+                                'Instagram': '',
+                                'Twitter': '',
+                                'LinkedIn': '',
+                                'Social_Approved': True
                             }
                             
                             with engine.begin() as conn:
@@ -328,10 +348,9 @@ else:
                 return {}
 
         avatars_map = get_avatars_map()
-        # Ensure current user & admin avatars are tracked
         avatars_map[current_user.get('Full Name')] = current_user.get('Avatar', '')
 
-        # 1. MEMBER DIRECTORY TAB
+        # 1. MEMBER DIRECTORY TAB (Sea Green Cards with Approved Social Links)
         with tab_directory:
             st.markdown('### 📋 Resident & Member Directory Datasheet (v0.3 Migration)')
             
@@ -386,19 +405,38 @@ else:
                         map_url = f"https://www.google.com/maps/search/?api=1&query={urllib.parse.quote(str(row.get('Address', '')))}"
                         avatar_html = get_avatar_html(row.get('Full Name'), row.get('Avatar'), size=50)
                         
+                        # Social links rendering if approved
+                        social_links_html = ""
+                        is_approved = row.get('Social_Approved', True)
+                        if is_approved is None:
+                            is_approved = True
+                            
+                        if is_approved:
+                            s_parts = []
+                            if row.get('Facebook'):
+                                s_parts.append(f"<a href='{row.get('Facebook')}' target='_blank'>📘 Facebook</a>")
+                            if row.get('Instagram'):
+                                s_parts.append(f"<a href='{row.get('Instagram')}' target='_blank'>📸 Instagram</a>")
+                            if row.get('Twitter'):
+                                s_parts.append(f"<a href='{row.get('Twitter')}' target='_blank'>🐦 Twitter</a>")
+                            if row.get('LinkedIn'):
+                                s_parts.append(f"<a href='{row.get('LinkedIn')}' target='_blank'>💼 LinkedIn</a>")
+                            if s_parts:
+                                social_links_html = f"<br>🌐 <b>Social Channels:</b> {' | '.join(s_parts)}"
+
                         st.markdown(f"""
                             <div class="sea-green-card">
                                 <div style="display: flex; align-items: center; margin-bottom: 6px;">
                                     {avatar_html}
                                     <div>
-                                        <h3 style="color: #050505; margin-bottom: 0px; display: inline-block;">{row.get('Full Name')}</h3> {fav_badge}<br>
-                                        <span style="color: #65676b; font-size: 0.9em;">{org_badge} {user_id_badge}</span>
+                                        <h3 style="color: #1b5e20; margin-bottom: 0px; display: inline-block;">{row.get('Full Name')}</h3> {fav_badge}<br>
+                                        <span style="color: #4f5d54; font-size: 0.9em;">{org_badge} {user_id_badge}</span>
                                     </div>
                                 </div>
-                                <p style="color: #65676b; font-size: 0.95em; margin-bottom: 10px;">
+                                <p style="color: #4f5d54; font-size: 0.95em; margin-bottom: 10px;">
                                     <b>Bio:</b> {row.get('Bio') or 'N/A'}
                                 </p>
-                                <hr style="margin: 8px 0; border-color: #e4e6eb;">
+                                <hr style="margin: 8px 0; border-color: #c8e6c9;">
                                 <p style="font-size: 0.9em; margin: 4px 0;">
                                     📍 <b>Address:</b> <a href="{map_url}" target="_blank">{row.get('Address')} (View on Map)</a><br>
                                     📞 <b>Phone:</b> <a href="tel:{row.get('Phone Number')}">{row.get('Phone Number')}</a> | 
@@ -406,6 +444,7 @@ else:
                                     📞 <b>WhatsApp Call:</b> <a href="tel:{row.get('WhatsApp Call')}">{row.get('WhatsApp Call')}</a><br>
                                     ✉️ <b>Email:</b> <a href="mailto:{row.get('Email')}">{row.get('Email')}</a> | 
                                     🌐 <b>Website:</b> <a href="{row.get('Website')}" target="_blank">{row.get('Website')}</a>
+                                    {social_links_html}
                                 </p>
                             </div>
                         """, unsafe_allow_html=True)
@@ -542,7 +581,6 @@ else:
         with tab_chat:
             st.markdown('### 💬 Community Messenger (Real-Time Chat with Media & Avatars)')
             
-            # Messenger Container
             st.markdown('<div class="chat-container">', unsafe_allow_html=True)
             try:
                 with engine.connect() as conn:
@@ -629,17 +667,17 @@ else:
                     <div class="sea-green-card">
                         <h4>💬 WhatsApp Community</h4>
                         <p>Instant messaging and community group broadcasts.</p>
-                        <a href="https://whatsapp.com" target="_blank" style="color: #1877f2; font-weight: bold;">Open WhatsApp &rarr;</a>
+                        <a href="https://whatsapp.com" target="_blank" style="color: #2e8b57; font-weight: bold;">Open WhatsApp &rarr;</a>
                     </div>
                     <div class="sea-green-card">
                         <h4>📘 Facebook Group</h4>
                         <p>Neighborhood discussions and event photo sharing.</p>
-                        <a href="https://facebook.com" target="_blank" style="color: #1877f2; font-weight: bold;">Visit Facebook &rarr;</a>
+                        <a href="https://facebook.com" target="_blank" style="color: #2e8b57; font-weight: bold;">Visit Facebook &rarr;</a>
                     </div>
                     <div class="sea-green-card">
                         <h4>📸 Instagram Handle</h4>
                         <p>Community stories and highlights.</p>
-                        <a href="https://instagram.com" target="_blank" style="color: #1877f2; font-weight: bold;">Follow Instagram &rarr;</a>
+                        <a href="https://instagram.com" target="_blank" style="color: #2e8b57; font-weight: bold;">Follow Instagram &rarr;</a>
                     </div>
                 """, unsafe_allow_html=True)
             with col_s2:
@@ -647,21 +685,21 @@ else:
                     <div class="sea-green-card">
                         <h4>🐦 Twitter / X Feed</h4>
                         <p>Real-time community updates and announcements.</p>
-                        <a href="https://twitter.com" target="_blank" style="color: #1877f2; font-weight: bold;">Follow Twitter &rarr;</a>
+                        <a href="https://twitter.com" target="_blank" style="color: #2e8b57; font-weight: bold;">Follow Twitter &rarr;</a>
                     </div>
                     <div class="sea-green-card">
                         <h4>💼 LinkedIn Network</h4>
                         <p>Professional updates and institutional notices.</p>
-                        <a href="https://linkedin.com" target="_blank" style="color: #1877f2; font-weight: bold;">Connect LinkedIn &rarr;</a>
+                        <a href="https://linkedin.com" target="_blank" style="color: #2e8b57; font-weight: bold;">Connect LinkedIn &rarr;</a>
                     </div>
                     <div class="sea-green-card">
                         <h4>🌐 Official Web Portal & Code</h4>
                         <p>Primary secure application hub and repository.</p>
-                        <a href="https://supabase.com" target="_blank" style="color: #1877f2; font-weight: bold;">Open Portal &rarr;</a>
+                        <a href="https://supabase.com" target="_blank" style="color: #2e8b57; font-weight: bold;">Open Portal &rarr;</a>
                     </div>
                 """, unsafe_allow_html=True)
 
-        # 6. RESIDENT PORTAL TAB (With Custom Avatar & Password Change)
+        # 6. RESIDENT PORTAL TAB (With Custom Avatar & Social Links Submission)
         with tab_resident:
             r = st.session_state['user_record']
             st.markdown(f"### 👤 Resident Profile: {r.get('Full Name')}")
@@ -674,8 +712,8 @@ else:
                     <div style="display: flex; align-items: center; margin-bottom: 12px;">
                         {avatar_preview_html}
                         <div>
-                            <h3 style="color: #050505; margin-bottom: 0px;">{r.get('Full Name')}</h3>
-                            <span style="color: #65676b;">User ID: {r.get('User ID')} | Block: {r.get('Organization')}</span>
+                            <h3 style="color: #1b5e20; margin-bottom: 0px;">{r.get('Full Name')}</h3>
+                            <span style="color: #4f5d54;">User ID: {r.get('User ID')} | Block: {r.get('Organization')}</span>
                         </div>
                     </div>
                     <p style="margin: 4px 0;">📍 <b>Address:</b> {r.get('Address')}</p>
@@ -685,20 +723,31 @@ else:
                 </div>
             """, unsafe_allow_html=True)
 
-            # Avatar Update Form
-            st.markdown('#### 🖼️ Create / Update Your Custom Avatar Image')
-            with st.form('avatar_update_form'):
-                new_avatar_input = st.text_input('Avatar Image URL (Direct public link to an image file)', value=curr_avatar_url)
-                avatar_sub = st.form_submit_button('Save Avatar Image')
-                if avatar_sub:
+            # Avatar & Social Links Update Form
+            st.markdown('#### 🖼️ Create / Update Avatar & Social Communication Links')
+            st.info('ℹ️ Note: Social links (Facebook, Instagram, Twitter, LinkedIn) will appear on your directory card once approved by higher admins.')
+            with st.form('avatar_social_update_form'):
+                new_avatar_input = st.text_input('Avatar Image URL (Direct public link)', value=curr_avatar_url)
+                new_fb = st.text_input('Facebook Profile / Group URL', value=r.get('Facebook', ''))
+                new_ig = st.text_input('Instagram Profile URL', value=r.get('Instagram', ''))
+                new_tw = st.text_input('Twitter / X Profile URL', value=r.get('Twitter', ''))
+                new_li = st.text_input('LinkedIn Profile URL', value=r.get('LinkedIn', ''))
+                
+                profile_sub = st.form_submit_button('Save Profile & Social Links')
+                if profile_sub:
                     uid = r.get('User ID')
                     with engine.begin() as conn:
                         conn.execute(
-                            text('UPDATE togethespace_v4_directory SET "Avatar" = :av WHERE "User ID" = :uid'),
-                            {'av': new_avatar_input, 'uid': uid}
+                            text('UPDATE togethespace_v4_directory SET "Avatar" = :av, "Facebook" = :fb, "Instagram" = :ig, "Twitter" = :tw, "LinkedIn" = :li, "Social_Approved" = FALSE WHERE "User ID" = :uid'),
+                            {'av': new_avatar_input, 'fb': new_fb, 'ig': new_ig, 'tw': new_tw, 'li': new_li, 'uid': uid}
                         )
                     st.session_state['user_record']['Avatar'] = new_avatar_input
-                    st.success('Avatar image successfully updated!')
+                    st.session_state['user_record']['Facebook'] = new_fb
+                    st.session_state['user_record']['Instagram'] = new_ig
+                    st.session_state['user_record']['Twitter'] = new_tw
+                    st.session_state['user_record']['LinkedIn'] = new_li
+                    st.session_state['user_record']['Social_Approved'] = False
+                    st.success('Profile and social links updated successfully! Pending admin approval for directory display.')
                     st.rerun()
 
             if not st.session_state.get('is_admin_session'):
@@ -766,7 +815,7 @@ else:
                 if is_master:
                     st.info('👑 You are logged in as Master Admin. Use the Admin Portal tab to directly change any password without a request, or manage incoming Block Admin requests.')
                 else:
-                    st.info('ℹ️ You are logged in as a Block Admin. Go to the Admin Portal tab to approve resident requests, mark yourself busy for auto-acceptance, and submit your own request to the Master Admin.')
+                    st.info('ℹ️ You are logged in as a Block Admin. Go to the Admin Portal tab to approve resident requests, approve social links, mark yourself busy for auto-acceptance, and submit your own request to the Master Admin.')
 
         # 7. ADMIN PORTAL TAB
         with tab_admin:
@@ -840,6 +889,7 @@ else:
                 admin_action = st.radio('Select Admin Operation', [
                     '📢 Create Notice',
                     '🌐 Request / Manage Cross-Block Broadcasts',
+                    '🔗 Approve Social Links',
                     '🗑️ Delete Post',
                     '➕ Add Member',
                     '✏️ Edit Member',
@@ -937,7 +987,41 @@ else:
                         except Exception as e:
                             st.warning(f'Error loading block posts: {e}')
 
-                # 3. DELETE POST
+                # 3. APPROVE SOCIAL LINKS
+                elif admin_action == '🔗 Approve Social Links':
+                    st.markdown('#### 🔗 Review and Approve Resident Social Media Links')
+                    try:
+                        with engine.connect() as conn:
+                            if admin_block == 'Master Admin':
+                                unapproved_df = pd.read_sql(text('SELECT id, "Full Name", "Organization", "Facebook", "Instagram", "Twitter", "LinkedIn" FROM togethespace_v4_directory WHERE "Social_Approved" = FALSE ORDER BY "Full Name";'), con=conn)
+                            else:
+                                unapproved_df = pd.read_sql(text('SELECT id, "Full Name", "Organization", "Facebook", "Instagram", "Twitter", "LinkedIn" FROM togethespace_v4_directory WHERE "Organization" = :b AND "Social_Approved" = FALSE ORDER BY "Full Name";'), con=conn, params={'b': admin_block})
+                        
+                        if unapproved_df.empty:
+                            st.info('No pending social link approvals found.')
+                        else:
+                            for idx, u_row in unapproved_df.iterrows():
+                                st.markdown(f"""
+                                    <div class="admin-card">
+                                        <b>Member:</b> {u_row['Full Name']} ({u_row['Organization']})<br>
+                                        📘 Facebook: {u_row.get('Facebook') or 'N/A'}<br>
+                                        📸 Instagram: {u_row.get('Instagram') or 'N/A'}<br>
+                                        🐦 Twitter: {u_row.get('Twitter') or 'N/A'}<br>
+                                        💼 LinkedIn: {u_row.get('LinkedIn') or 'N/A'}
+                                    </div>
+                                """, unsafe_allow_html=True)
+                                if st.button(f'✅ Approve Social Links for {u_row["Full Name"]}', key=f'approve_social_{u_row["id"]}'):
+                                    with engine.begin() as conn:
+                                        conn.execute(
+                                            text('UPDATE togethespace_v4_directory SET "Social_Approved" = TRUE WHERE id = :id'),
+                                            {'id': int(u_row['id'])}
+                                        )
+                                    st.success(f'Social links approved for {u_row["Full Name"]}!')
+                                    st.rerun()
+                    except Exception as e:
+                        st.warning(f'Error loading unapproved social links: {e}')
+
+                # 4. DELETE POST
                 elif admin_action == '🗑️ Delete Post':
                     st.markdown('#### Delete Post by ID')
                     try:
@@ -960,7 +1044,7 @@ else:
                     except Exception as e:
                         st.warning(f'Error loading posts: {e}')
 
-                # 4. ADD MEMBER (With Avatar Support)
+                # 5. ADD MEMBER
                 elif admin_action == '➕ Add Member':
                     st.markdown('#### Add New Member Record')
                     st.info('ℹ️ Password Policy: Must be at least 8 characters and include at least one capital letter, one small letter, one number, and one special character.')
@@ -980,6 +1064,10 @@ else:
                         with c2:
                             email = st.text_input('Email')
                             website = st.text_input('Website')
+                            fb_in = st.text_input('Facebook URL')
+                            ig_in = st.text_input('Instagram URL')
+                            tw_in = st.text_input('Twitter URL')
+                            li_in = st.text_input('LinkedIn URL')
                             blood = st.text_input('Blood Group')
                             allergies = st.text_input('Allergies')
                             med_cond = st.text_input('Medical Conditions')
@@ -1001,12 +1089,13 @@ else:
                                         conn.execute(
                                             text("""
                                                 INSERT INTO togethespace_v4_directory 
-                                                ("Organization", "Full Name", "User ID", "Password", "Avatar", "Address", "Phone Number", "WhatsApp Call", "WhatsApp Chat", "Email", "Website", "Blood Group", "Allergies", "Medical Conditions", "Medications", "Emergency Contact Name", "Emergency Contact Phone", "Bio")
+                                                ("Organization", "Full Name", "User ID", "Password", "Avatar", "Facebook", "Instagram", "Twitter", "LinkedIn", "Social_Approved", "Address", "Phone Number", "WhatsApp Call", "WhatsApp Chat", "Email", "Website", "Blood Group", "Allergies", "Medical Conditions", "Medications", "Emergency Contact Name", "Emergency Contact Phone", "Bio")
                                                 VALUES 
-                                                (:org, :full_name, :userid, :password, :avatar, :address, :phone, :wa_call, :wa_chat, :email, :website, :blood, :allergies, :med_cond, :meds, :em_name, :em_phone, :bio)
+                                                (:org, :full_name, :userid, :password, :avatar, :fb, :ig, :tw, :li, TRUE, :address, :phone, :wa_call, :wa_chat, :email, :website, :blood, :allergies, :med_cond, :meds, :em_name, :em_phone, :bio)
                                             """),
                                             {
                                                 'org': org, 'full_name': full_name, 'userid': userid, 'password': hashed_pwd, 'avatar': avatar_url,
+                                                'fb': fb_in, 'ig': ig_in, 'tw': tw_in, 'li': li_in,
                                                 'address': address, 'phone': phone, 'wa_call': wa_call, 'wa_chat': wa_chat,
                                                 'email': email, 'website': website, 'blood': blood, 'allergies': allergies,
                                                 'med_cond': med_cond, 'meds': meds, 'em_name': em_name, 'em_phone': em_phone, 'bio': bio
@@ -1017,7 +1106,7 @@ else:
                             else:
                                 st.warning('Full Name is required.')
 
-                # 5. EDIT MEMBER (With Avatar Support)
+                # 6. EDIT MEMBER
                 elif admin_action == '✏️ Edit Member':
                     st.markdown('#### Edit Existing Member')
                     edit_query = st.text_input('Search Member Name to Edit', '')
@@ -1070,7 +1159,7 @@ else:
                                         st.success('Member record updated successfully!')
                                         st.rerun()
 
-                # 6. DELETE MEMBER
+                # 7. DELETE MEMBER
                 elif admin_action == '❌ Delete Member':
                     st.markdown('#### Remove Member Record')
                     del_query = st.text_input('Search Member Name to Delete', '')
@@ -1093,7 +1182,7 @@ else:
                                     st.success(f'Member ID {d_id} deleted successfully.')
                                     st.rerun()
 
-                # 7. PASSWORD REQUESTS & APPROVALS WORKFLOW
+                # 8. PASSWORD REQUESTS & APPROVALS WORKFLOW
                 elif admin_action == '🔑 Password Requests & Approvals':
                     if admin_block == 'Master Admin':
                         st.markdown('### 👑 Master Admin: Manage Block Admin Requests & Self-Requests')
@@ -1279,7 +1368,7 @@ else:
                                 else:
                                     st.warning('Please enter a password.')
 
-                # 8. DIRECT PASSWORD OVERRIDE (Master Only)
+                # 9. DIRECT PASSWORD OVERRIDE (Master Only)
                 elif admin_action == '⚡ Direct Password Override (Master Only)':
                     if admin_block == 'Master Admin':
                         st.markdown('### ⚡ Master Admin: Direct Password Override (No Request Needed)')
@@ -1331,7 +1420,7 @@ else:
                     else:
                         st.error('❌ Access Denied: Direct Password Override is restricted exclusively to the Master Admin.')
 
-                # 9. AUDIT LOGS
+                # 10. AUDIT LOGS
                 elif admin_action == '📋 Audit Logs':
                     st.markdown('#### 📜 Password Change & Login Audit Logs')
                     try:
@@ -1345,7 +1434,7 @@ else:
                     except Exception as e:
                         st.info('Audit log table will populate once logins or password changes are processed.')
 
-                # 10. EXPORT CREDENTIALS CSV
+                # 11. EXPORT CREDENTIALS CSV
                 elif admin_action == '📥 Export Credentials CSV':
                     st.markdown('#### 📥 Download Credentials Export')
                     st.info('Note: Passwords are securely hashed. The CSV export displays hashed security strings for account protection.')
@@ -1364,7 +1453,7 @@ else:
                                 label=f"📥 Download {admin_block} Credentials CSV",
                                 data=csv_data,
                                 file_name=f"togethespace_credentials_{admin_block.lower().replace(' ', '_')}.csv",
-                                mime="text/csv",
+                                mime="text/css" if False else "text/csv",
                                 use_container_width=True
                             )
                     except Exception as e:
