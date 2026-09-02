@@ -42,17 +42,6 @@ st.markdown("""
         overflow-y: auto;
         box-shadow: 0 1px 3px rgba(0, 0, 0, 0.1);
     }
-    .messenger-bubble {
-        background-color: #f0f2f5;
-        color: #050505;
-        border-radius: 18px;
-        padding: 10px 14px;
-        margin-bottom: 8px;
-        max-width: 75%;
-        display: inline-block;
-        box-shadow: 0 1px 2px rgba(0,0,0,0.05);
-        word-break: break-word;
-    }
     .admin-card {
         background-color: #fff3e0;
         border-left: 6px solid #f57c00;
@@ -115,6 +104,9 @@ else:
                     block VARCHAR(50) PRIMARY KEY,
                     is_busy BOOLEAN DEFAULT FALSE
                 );
+            """))
+            conn.execute(text("""
+                ALTER TABLE togethespace_v4_directory ADD COLUMN IF NOT EXISTS "Avatar" TEXT;
             """))
 
         def hash_password(plain_text_password):
@@ -204,7 +196,8 @@ else:
                                 'Phone Number': 'N/A',
                                 'Address': 'Admin Control Center',
                                 'Blood Group': 'N/A',
-                                'Allergies': 'N/A'
+                                'Allergies': 'N/A',
+                                'Avatar': ''
                             }
                             
                             with engine.begin() as conn:
@@ -316,6 +309,28 @@ else:
             '🔐 Admin Portal'
         ])
 
+        # Helper for Avatar HTML rendering
+        def get_avatar_html(name, avatar_url, size=40):
+            if avatar_url and str(avatar_url).strip().startswith('http'):
+                return f"<img src='{avatar_url}' style='width: {size}px; height: {size}px; border-radius: 50%; object-fit: cover; margin-right: 10px; border: 1px solid #e4e6eb;'>"
+            else:
+                initial = str(name or 'U')[0].upper()
+                return f"<div style='background-color: #1877f2; color: white; width: {size}px; height: {size}px; border-radius: 50%; display: inline-flex; align-items: center; justify-content: center; font-weight: bold; margin-right: 10px; font-size: {size//2}px;'>{initial}</div>"
+
+        # Helper mapping sender names to avatars in chat
+        @st.cache_data(ttl=60)
+        def get_avatars_map():
+            try:
+                with engine.connect() as conn:
+                    df = pd.read_sql(text('SELECT "Full Name", "Avatar" FROM togethespace_v4_directory WHERE "Full Name" IS NOT NULL;'), con=conn)
+                return dict(zip(df['Full Name'], df['Avatar']))
+            except Exception:
+                return {}
+
+        avatars_map = get_avatars_map()
+        # Ensure current user & admin avatars are tracked
+        avatars_map[current_user.get('Full Name')] = current_user.get('Avatar', '')
+
         # 1. MEMBER DIRECTORY TAB
         with tab_directory:
             st.markdown('### 📋 Resident & Member Directory Datasheet (v0.3 Migration)')
@@ -369,12 +384,19 @@ else:
                         org_badge = f"🏢 <b>Block:</b> {row.get('Organization')}" if row.get('Organization') else ''
                         user_id_badge = f" | 👤 <b>User ID:</b> {row.get('User ID')}" if row.get('User ID') else ''
                         map_url = f"https://www.google.com/maps/search/?api=1&query={urllib.parse.quote(str(row.get('Address', '')))}"
+                        avatar_html = get_avatar_html(row.get('Full Name'), row.get('Avatar'), size=50)
                         
                         st.markdown(f"""
                             <div class="sea-green-card">
-                                <h3 style="color: #050505; margin-bottom: 2px;">{row.get('Full Name')} {fav_badge}</h3>
+                                <div style="display: flex; align-items: center; margin-bottom: 6px;">
+                                    {avatar_html}
+                                    <div>
+                                        <h3 style="color: #050505; margin-bottom: 0px; display: inline-block;">{row.get('Full Name')}</h3> {fav_badge}<br>
+                                        <span style="color: #65676b; font-size: 0.9em;">{org_badge} {user_id_badge}</span>
+                                    </div>
+                                </div>
                                 <p style="color: #65676b; font-size: 0.95em; margin-bottom: 10px;">
-                                    {org_badge} {user_id_badge} | <b>Bio:</b> {row.get('Bio') or 'N/A'}
+                                    <b>Bio:</b> {row.get('Bio') or 'N/A'}
                                 </p>
                                 <hr style="margin: 8px 0; border-color: #e4e6eb;">
                                 <p style="font-size: 0.9em; margin: 4px 0;">
@@ -450,15 +472,16 @@ else:
                         if row.get('Broadcast_Status') == 'Pending':
                             vis_label += " • ⏳ Broadcast Pending"
                         
-                        # Facebook-like Card Wrapper
+                        author_name = row['author'] or 'Anonymous'
+                        author_avatar_url = avatars_map.get(author_name, '')
+                        avatar_html = get_avatar_html(author_name, author_avatar_url, size=40)
+                        
                         st.markdown(f"""
                             <div class="sea-green-card">
                                 <div style="display: flex; align-items: center; margin-bottom: 8px;">
-                                    <div style="background-color: #1877f2; color: white; width: 40px; height: 40px; border-radius: 50%; display: flex; align-items: center; justify-content: center; font-weight: bold; margin-right: 10px;">
-                                        {str(row['author'] or 'A')[0].upper()}
-                                    </div>
+                                    {avatar_html}
                                     <div>
-                                        <b style="color: #050505; font-size: 1.05em;">{row['author'] or 'Anonymous'}</b> <span style="color: #65676b; font-size: 0.85em;">shared a post</span><br>
+                                        <b style="color: #050505; font-size: 1.05em;">{author_name}</b> <span style="color: #65676b; font-size: 0.85em;">shared a post</span><br>
                                         <span style="color: #65676b; font-size: 0.75em;">{row['created_at']} • {vis_label}</span>
                                     </div>
                                 </div>
@@ -517,7 +540,7 @@ else:
 
         # 4. FACEBOOK MESSENGER-STYLE CHAT TAB
         with tab_chat:
-            st.markdown('### 💬 Community Messenger (Real-Time Chat with Media Support)')
+            st.markdown('### 💬 Community Messenger (Real-Time Chat with Media & Avatars)')
             
             # Messenger Container
             st.markdown('<div class="chat-container">', unsafe_allow_html=True)
@@ -529,19 +552,39 @@ else:
                     st.info('No messages yet. Start the conversation below!')
                 else:
                     for idx, row in df_chat.iterrows():
-                        is_me = (row['sender'] == current_user.get('Full Name'))
-                        align_style = "text-align: right;" if is_me else "text-align: left;"
+                        sender = row['sender']
+                        is_me = (sender == current_user.get('Full Name'))
+                        sender_avatar = avatars_map.get(sender, '')
+                        avatar_html = get_avatar_html(sender, sender_avatar, size=32)
+                        
+                        align_style = "text-align: right; justify-content: flex-end;" if is_me else "text-align: left; justify-content: flex-start;"
                         bubble_bg = "#0084ff" if is_me else "#e4e6eb"
                         bubble_color = "white" if is_me else "#050505"
                         
-                        st.markdown(f"""
-                            <div style="{align_style} margin-bottom: 10px;">
-                                <span style="font-size: 0.75em; color: #65676b; display: block; margin-bottom: 2px;">{row['sender']} • {row['created_at']}</span>
-                                <div style="background-color: {bubble_bg}; color: {bubble_color}; border-radius: 18px; padding: 10px 14px; display: inline-block; max-width: 75%; text-align: left; word-break: break-word; box-shadow: 0 1px 2px rgba(0,0,0,0.05);">
-                                    {row['message']}
+                        if is_me:
+                            st.markdown(f"""
+                                <div style="display: flex; {align_style} margin-bottom: 10px; align-items: flex-end;">
+                                    <div style="max-width: 75%; text-align: left;">
+                                        <span style="font-size: 0.7em; color: #65676b; display: block; text-align: right; margin-bottom: 2px;">{row['created_at']}</span>
+                                        <div style="background-color: {bubble_bg}; color: {bubble_color}; border-radius: 18px; padding: 10px 14px; word-break: break-word; box-shadow: 0 1px 2px rgba(0,0,0,0.05);">
+                                            {row['message']}
+                                        </div>
+                                    </div>
+                                    <div style="margin-left: 6px;">{avatar_html}</div>
                                 </div>
-                            </div>
-                        """, unsafe_allow_html=True)
+                            """, unsafe_allow_html=True)
+                        else:
+                            st.markdown(f"""
+                                <div style="display: flex; {align_style} margin-bottom: 10px; align-items: flex-end;">
+                                    <div style="margin-right: 6px;">{avatar_html}</div>
+                                    <div style="max-width: 75%; text-align: left;">
+                                        <span style="font-size: 0.7em; color: #65676b; display: block; margin-bottom: 2px;">{sender} • {row['created_at']}</span>
+                                        <div style="background-color: {bubble_bg}; color: {bubble_color}; border-radius: 18px; padding: 10px 14px; word-break: break-word; box-shadow: 0 1px 2px rgba(0,0,0,0.05);">
+                                            {row['message']}
+                                        </div>
+                                    </div>
+                                </div>
+                            """, unsafe_allow_html=True)
             except Exception as e:
                 st.warning(f'Chat loading error: {e}')
             st.markdown('</div>', unsafe_allow_html=True)
@@ -618,21 +661,45 @@ else:
                     </div>
                 """, unsafe_allow_html=True)
 
-        # 6. RESIDENT PORTAL TAB
+        # 6. RESIDENT PORTAL TAB (With Custom Avatar & Password Change)
         with tab_resident:
             r = st.session_state['user_record']
             st.markdown(f"### 👤 Resident Profile: {r.get('Full Name')}")
             
+            curr_avatar_url = r.get('Avatar', '')
+            avatar_preview_html = get_avatar_html(r.get('Full Name'), curr_avatar_url, size=80)
+
             st.markdown(f"""
                 <div class="sea-green-card">
-                    <p style="margin: 4px 0;">👤 <b>User ID:</b> {r.get('User ID')}</p>
-                    <p style="margin: 4px 0;">🏢 <b>Block / Organization:</b> {r.get('Organization')}</p>
+                    <div style="display: flex; align-items: center; margin-bottom: 12px;">
+                        {avatar_preview_html}
+                        <div>
+                            <h3 style="color: #050505; margin-bottom: 0px;">{r.get('Full Name')}</h3>
+                            <span style="color: #65676b;">User ID: {r.get('User ID')} | Block: {r.get('Organization')}</span>
+                        </div>
+                    </div>
                     <p style="margin: 4px 0;">📍 <b>Address:</b> {r.get('Address')}</p>
                     <p style="margin: 4px 0;">📞 <b>Phone Number:</b> {r.get('Phone Number')}</p>
                     <p style="margin: 4px 0;">✉️ <b>Email:</b> {r.get('Email')}</p>
                     <p style="margin: 4px 0;">🩸 <b>Blood Group:</b> {r.get('Blood Group', 'N/A')} | ⚠️ <b>Allergies:</b> {r.get('Allergies', 'N/A')}</p>
                 </div>
             """, unsafe_allow_html=True)
+
+            # Avatar Update Form
+            st.markdown('#### 🖼️ Create / Update Your Custom Avatar Image')
+            with st.form('avatar_update_form'):
+                new_avatar_input = st.text_input('Avatar Image URL (Direct public link to an image file)', value=curr_avatar_url)
+                avatar_sub = st.form_submit_button('Save Avatar Image')
+                if avatar_sub:
+                    uid = r.get('User ID')
+                    with engine.begin() as conn:
+                        conn.execute(
+                            text('UPDATE togethespace_v4_directory SET "Avatar" = :av WHERE "User ID" = :uid'),
+                            {'av': new_avatar_input, 'uid': uid}
+                        )
+                    st.session_state['user_record']['Avatar'] = new_avatar_input
+                    st.success('Avatar image successfully updated!')
+                    st.rerun()
 
             if not st.session_state.get('is_admin_session'):
                 block_name = r.get("Organization")
@@ -893,7 +960,7 @@ else:
                     except Exception as e:
                         st.warning(f'Error loading posts: {e}')
 
-                # 4. ADD MEMBER
+                # 4. ADD MEMBER (With Avatar Support)
                 elif admin_action == '➕ Add Member':
                     st.markdown('#### Add New Member Record')
                     st.info('ℹ️ Password Policy: Must be at least 8 characters and include at least one capital letter, one small letter, one number, and one special character.')
@@ -905,6 +972,7 @@ else:
                             full_name = st.text_input('Full Name *')
                             userid = st.text_input('User ID')
                             password = st.text_input('Password', type='password')
+                            avatar_url = st.text_input('Avatar Image URL')
                             address = st.text_input('Address')
                             phone = st.text_input('Phone Number')
                             wa_call = st.text_input('WhatsApp Call')
@@ -933,12 +1001,12 @@ else:
                                         conn.execute(
                                             text("""
                                                 INSERT INTO togethespace_v4_directory 
-                                                ("Organization", "Full Name", "User ID", "Password", "Address", "Phone Number", "WhatsApp Call", "WhatsApp Chat", "Email", "Website", "Blood Group", "Allergies", "Medical Conditions", "Medications", "Emergency Contact Name", "Emergency Contact Phone", "Bio")
+                                                ("Organization", "Full Name", "User ID", "Password", "Avatar", "Address", "Phone Number", "WhatsApp Call", "WhatsApp Chat", "Email", "Website", "Blood Group", "Allergies", "Medical Conditions", "Medications", "Emergency Contact Name", "Emergency Contact Phone", "Bio")
                                                 VALUES 
-                                                (:org, :full_name, :userid, :password, :address, :phone, :wa_call, :wa_chat, :email, :website, :blood, :allergies, :med_cond, :meds, :em_name, :em_phone, :bio)
+                                                (:org, :full_name, :userid, :password, :avatar, :address, :phone, :wa_call, :wa_chat, :email, :website, :blood, :allergies, :med_cond, :meds, :em_name, :em_phone, :bio)
                                             """),
                                             {
-                                                'org': org, 'full_name': full_name, 'userid': userid, 'password': hashed_pwd,
+                                                'org': org, 'full_name': full_name, 'userid': userid, 'password': hashed_pwd, 'avatar': avatar_url,
                                                 'address': address, 'phone': phone, 'wa_call': wa_call, 'wa_chat': wa_chat,
                                                 'email': email, 'website': website, 'blood': blood, 'allergies': allergies,
                                                 'med_cond': med_cond, 'meds': meds, 'em_name': em_name, 'em_phone': em_phone, 'bio': bio
@@ -949,7 +1017,7 @@ else:
                             else:
                                 st.warning('Full Name is required.')
 
-                # 5. EDIT MEMBER
+                # 5. EDIT MEMBER (With Avatar Support)
                 elif admin_action == '✏️ Edit Member':
                     st.markdown('#### Edit Existing Member')
                     edit_query = st.text_input('Search Member Name to Edit', '')
@@ -973,6 +1041,7 @@ else:
                                 with st.form('edit_dir_form'):
                                     e_name = st.text_input('Full Name', value=str(m_data.get('Full Name', '')))
                                     e_uid = st.text_input('User ID', value=str(m_data.get('User ID', '')))
+                                    e_avatar = st.text_input('Avatar Image URL', value=str(m_data.get('Avatar', '')))
                                     e_pwd = st.text_input('New Password (leave blank to keep current)', type='password', value='')
                                     e_addr = st.text_input('Address', value=str(m_data.get('Address', '')))
                                     e_phone = st.text_input('Phone Number', value=str(m_data.get('Phone Number', '')))
@@ -990,13 +1059,13 @@ else:
                                             if e_pwd:
                                                 final_pwd_hash = hash_password(e_pwd)
                                                 conn.execute(
-                                                    text('UPDATE togethespace_v4_directory SET "Full Name" = :name, "User ID" = :uid, "Password" = :pwd, "Address" = :addr, "Phone Number" = :phone, "Email" = :email WHERE id = :id'),
-                                                    {'name': e_name, 'uid': e_uid, 'pwd': final_pwd_hash, 'addr': e_addr, 'phone': e_phone, 'email': e_email, 'id': m_id}
+                                                    text('UPDATE togethespace_v4_directory SET "Full Name" = :name, "User ID" = :uid, "Password" = :pwd, "Avatar" = :avatar, "Address" = :addr, "Phone Number" = :phone, "Email" = :email WHERE id = :id'),
+                                                    {'name': e_name, 'uid': e_uid, 'pwd': final_pwd_hash, 'avatar': e_avatar, 'addr': e_addr, 'phone': e_phone, 'email': e_email, 'id': m_id}
                                                 )
                                             else:
                                                 conn.execute(
-                                                    text('UPDATE togethespace_v4_directory SET "Full Name" = :name, "User ID" = :uid, "Address" = :addr, "Phone Number" = :phone, "Email" = :email WHERE id = :id'),
-                                                    {'name': e_name, 'uid': e_uid, 'addr': e_addr, 'phone': e_phone, 'email': e_email, 'id': m_id}
+                                                    text('UPDATE togethespace_v4_directory SET "Full Name" = :name, "User ID" = :uid, "Avatar" = :avatar, "Address" = :addr, "Phone Number" = :phone, "Email" = :email WHERE id = :id'),
+                                                    {'name': e_name, 'uid': e_uid, 'avatar': e_avatar, 'addr': e_addr, 'phone': e_phone, 'email': e_email, 'id': m_id}
                                                 )
                                         st.success('Member record updated successfully!')
                                         st.rerun()
