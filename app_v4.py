@@ -24,7 +24,6 @@ st.markdown("""
         font-family: 'Poppins', sans-serif;
     }
     
-    /* Typography Overrides: Deep Black, Crisp, High Contrast */
     h1, h2, h3, h4, h5, h6 {
         color: #0a0a0a !important;
         font-family: 'Poppins', sans-serif;
@@ -37,7 +36,6 @@ st.markdown("""
         font-weight: 500;
     }
 
-    /* Code blocks or technical readouts use a crisp technical font */
     code, pre {
         font-family: 'Fira Code', monospace !important;
         color: #b71c1c !important;
@@ -131,7 +129,8 @@ else:
     try:
         engine = get_db_engine(DATABASE_URL)
         
-        with engine.connect() as conn:
+        # FIXED: Using engine.begin() instead of engine.connect() so DDL table creation statements commit automatically
+        with engine.begin() as conn:
             conn.execute(text('SELECT 1;'))
             conn.execute(text("""
                 CREATE TABLE IF NOT EXISTS togethespace_v4_admin_status (
@@ -984,7 +983,7 @@ else:
                     </div>
                 """, unsafe_allow_html=True)
 
-        # 8. AI WEEKLY LEARNING CORNER (Rich Course Content + Pure Speech Reader Without Music)
+        # 8. AI WEEKLY LEARNING CORNER
         elif menu_selection == "🎓 AI Weekly Learning Corner":
             st.markdown("### 🎓 AI Course-Oriented Weekly Learning Hub (52-Week Masterclass)")
             st.info("Structured 52-week rotating calendar: Monday–Thursday full-length AI lessons (1.5 page reading) with Text-to-Speech Read-Aloud & Multilingual support (English, Bengali, Hindi), followed by Friday's 10-question AI exam.")
@@ -1039,7 +1038,6 @@ else:
 
                 st.markdown(lesson_content)
 
-                # Pure Speech Reader Placeholder & Action (No background music)
                 st.markdown("🔊 **AI Voice Read-Aloud (Text-to-Speech Narration):**")
                 if st.button("▶ Click to Listen to Course Reading (" + lang_choice + ")"):
                     st.info("🎙️ [AI Voice Synthesizer]: Reading aloud the entire Week " + str(week_num) + " course material for " + course_choice + " in " + lang_choice + " with a warm, natural tone and optimal speed...")
@@ -1803,7 +1801,7 @@ else:
                                             conn.execute(
                                                 text('INSERT INTO togethespace_v4_password_requests (requested_by, target_userid, target_name, block, new_password, status) VALUES (:by, :target, :name, :block, :pwd, :status)'),
                                                 {
-                                                    'by': f"Block Admin: {ap_info.get('Full Name')} ({admin_block})",
+                                                    'by': f'Block Admin: {ap_info.get("Full Name")} ({admin_block})',
                                                     'target': ap_info.get('User ID'),
                                                     'name': ap_info.get('Full Name'),
                                                     'block': admin_block,
