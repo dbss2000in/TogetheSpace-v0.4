@@ -46,6 +46,15 @@ st.markdown("""
         margin-bottom: 16px;
         box-shadow: 0 3px 6px rgba(245, 124, 0, 0.1);
     }
+    .login-container {
+        background-color: #ffffff;
+        padding: 30px;
+        border-radius: 12px;
+        box-shadow: 0 4px 12px rgba(46, 139, 87, 0.15);
+        max-width: 550px;
+        margin: 50px auto;
+        border-top: 6px solid #2e8b57;
+    }
     .stTabs [data-baseweb="tab-list"] {
         gap: 12px;
     }
@@ -87,7 +96,87 @@ else:
         with engine.connect() as conn:
             conn.execute(text('SELECT 1;'))
 
-        # --- NAVIGATION TABS ---
+        # --- AUTHENTICATION GATE ---
+        if 'authenticated' not in st.session_state:
+            st.session_state['authenticated'] = False
+
+        if not st.session_state['authenticated']:
+            st.markdown("""
+                <div class="login-container">
+                    <h2 style="color: #1b5e20; text-align: center; margin-bottom: 10px;">🔒 Secure Access Portal</h2>
+                    <p style="text-align: center; color: #4f5d54; font-size: 0.95em;">
+                        Please authenticate with your User ID and Password to enter TogetheSpace.
+                    </p>
+                </div>
+            """, unsafe_allow_html=True)
+
+            # Fetch lightweight user list for searchable dropdown with typing hints
+            try:
+                with engine.connect() as conn:
+                    users_df = pd.read_sql(text('SELECT "User ID", "Full Name", "Organization" FROM togethespace_v4_directory WHERE "User ID" IS NOT NULL ORDER BY "Full Name" ASC;'), con=conn)
+            except Exception:
+                users_df = pd.DataFrame(columns=['User ID', 'Full Name', 'Organization'])
+
+            if users_df.empty:
+                user_options = []
+            else:
+                user_options = users_df.apply(lambda r: f"{r['User ID']} — {r['Full Name']} ({r['Organization']})", axis=1).tolist()
+
+            with st.form('app_login_form'):
+                st.markdown('#### Select or Type User ID')
+                selected_user_str = st.selectbox(
+                    'Search User ID (Type to filter / hint matching)',
+                    options=['-- Select or Type User ID --'] + user_options,
+                    help='Type any part of your User ID or Name to filter options instantly.'
+                )
+                
+                login_pwd = st.text_input('Password', type='password', help='Enter your account password (Default: Welcome2026!)')
+                login_btn = st.form_submit_button('Login to Application', use_container_width=True)
+
+                if login_btn:
+                    if selected_user_str == '-- Select or Type User ID --' or not selected_user_str:
+                        st.warning('Please select or search your User ID.')
+                    elif not login_pwd:
+                        st.warning('Please enter your password.')
+                    else:
+                        # Extract User ID from selection string
+                        extracted_uid = selected_user_str.split(' — ')[0].strip()
+                        
+                        with engine.connect() as conn:
+                            auth_query = text('SELECT * FROM togethespace_v4_directory WHERE "User ID" = :uid AND "Password" = :pwd;')
+                            auth_res = pd.read_sql(auth_query, con=conn, params={'uid': extracted_uid, 'pwd': login_pwd})
+                        
+                        if not auth_res.empty:
+                            user_record = auth_res.iloc[0].to_dict()
+                            st.session_state['authenticated'] = True
+                            st.session_state['user_record'] = user_record
+                            
+                            # Log successful login to audit trail
+                            with engine.begin() as conn:
+                                conn.execute(
+                                    text('INSERT INTO togethespace_v4_password_logs (changed_by, target_userid, action_type, details) VALUES (:by, :target, :action, :details)'),
+                                    {
+                                        'by': user_record.get('Full Name', extracted_uid),
+                                        'target': extracted_uid,
+                                        'action': 'Resident Login',
+                                        'details': f'Successful login recorded for {user_record.get("Full Name")} ({user_record.get("Organization")}).'
+                                    }
+                                )
+                            st.success('Login successful! Loading application...')
+                            st.rerun()
+                        else:
+                            st.error('❌ Incorrect password or User ID. Please try again.')
+
+            st.stop() # Halts rendering of the rest of the app until authenticated
+
+        # --- MAIN APPLICATION TABS (Unlocked after Login) ---
+        col_top1, col_top2 = st.columns([6, 1])
+        with col_top2:
+            if st.button('🚪 Logout', use_container_width=True):
+                st.session_state['authenticated'] = False
+                st.session_state.pop('user_record', None)
+                st.rerun()
+
         tab_directory, tab_feed, tab_notices, tab_chat, tab_social, tab_resident, tab_admin = st.tabs([
             '📋 Member Directory',
             '🏡 Community Feed',
@@ -352,73 +441,43 @@ else:
                     </div>
                 """, unsafe_allow_html=True)
 
-        # 6. RESIDENT PORTAL TAB (Member Login & Password Change Requests)
+        # 6. RESIDENT PORTAL TAB (Logged-in Resident Profile & Password Change Requests)
         with tab_resident:
-            st.markdown('### 👤 Resident Login & Profile Portal')
-            st.markdown('Log in using your assigned **User ID** and **Password** to view your resident profile and submit password change requests.')
+            r = st.session_state['user_record']
+            st.markdown(f"### 👤 Resident Profile: {r.get('Full Name')}")
+            
+            st.markdown("""
+                <div class="sea-green-card">
+            """, unsafe_allow_html=True)
+            st.write(f"**User ID:** {r.get('User ID')}")
+            st.write(f"**Block / Organization:** {r.get('Organization')}")
+            st.write(f"**Address:** {r.get('Address')}")
+            st.write(f"**Phone Number:** {r.get('Phone Number')}")
+            st.write(f"**Email:** {r.get('Email')}")
+            st.write(f"**Blood Group:** {r.get('Blood Group')} | **Allergies:** {r.get('Allergies')}")
+            st.markdown("</div>", unsafe_allow_html=True)
 
-            with st.form('resident_login_form'):
-                r_uid = st.text_input('User ID')
-                r_pwd = st.text_input('Password', type='password')
-                r_login_btn = st.form_submit_button('Login to Resident Portal')
-
-            if r_login_btn:
-                if r_uid and r_pwd:
-                    with engine.connect() as conn:
-                        res_check = pd.read_sql(
-                            text('SELECT * FROM togethespace_v4_directory WHERE "User ID" = :uid AND "Password" = :pwd'),
-                            con=conn,
-                            params={'uid': r_uid, 'pwd': r_pwd}
-                        )
-                    if not res_check.empty:
-                        st.session_state['resident_logged'] = True
-                        st.session_state['resident_data'] = res_check.iloc[0].to_dict()
-                        st.success('Login successful!')
+            st.markdown('#### 🔑 Request Password Change')
+            with st.form('resident_pwd_req_form'):
+                new_r_pwd = st.text_input('New Desired Password', type='password')
+                req_submit = st.form_submit_button('Submit Password Change Request')
+                if req_submit:
+                    if new_r_pwd:
+                        with engine.begin() as conn:
+                            conn.execute(
+                                text('INSERT INTO togethespace_v4_password_requests (requested_by, target_userid, target_name, block, new_password, status) VALUES (:by, :target, :name, :block, :pwd, :status)'),
+                                {
+                                    'by': f"Resident: {r.get('Full Name')}",
+                                    'target': str(r.get('User ID')),
+                                    'name': r.get('Full Name'),
+                                    'block': r.get('Organization', 'General'),
+                                    'pwd': new_r_pwd,
+                                    'status': 'Pending'
+                                }
+                            )
+                        st.success('Password change request submitted successfully to your Block Admin for approval!')
                     else:
-                        st.error('Invalid User ID or Password.')
-                else:
-                    st.warning('Please enter both User ID and Password.')
-
-            if st.session_state.get('resident_logged'):
-                r = st.session_state['resident_data']
-                st.markdown(f"### Welcome, {r.get('Full Name')}! 🎉")
-                
-                st.markdown("""
-                    <div class="sea-green-card">
-                """, unsafe_allow_html=True)
-                st.write(f"**Block / Organization:** {r.get('Organization')}")
-                st.write(f"**Address:** {r.get('Address')}")
-                st.write(f"**Phone Number:** {r.get('Phone Number')}")
-                st.write(f"**Email:** {r.get('Email')}")
-                st.write(f"**Blood Group:** {r.get('Blood Group')} | **Allergies:** {r.get('Allergies')}")
-                st.markdown("</div>", unsafe_allow_html=True)
-
-                st.markdown('#### 🔑 Request Password Change')
-                with st.form('resident_pwd_req_form'):
-                    new_r_pwd = st.text_input('New Desired Password', type='password')
-                    req_submit = st.form_submit_button('Submit Password Change Request')
-                    if req_submit:
-                        if new_r_pwd:
-                            with engine.begin() as conn:
-                                conn.execute(
-                                    text('INSERT INTO togethespace_v4_password_requests (requested_by, target_userid, target_name, block, new_password, status) VALUES (:by, :target, :name, :block, :pwd, :status)'),
-                                    {
-                                        'by': f"Resident: {r.get('Full Name')}",
-                                        'target': str(r.get('User ID')),
-                                        'name': r.get('Full Name'),
-                                        'block': r.get('Organization', 'General'),
-                                        'pwd': new_r_pwd,
-                                        'status': 'Pending'
-                                    }
-                                )
-                            st.success('Password change request submitted successfully to your Block Admin for approval!')
-                        else:
-                            st.warning('Please enter a new password.')
-
-                if st.button('Logout'):
-                    st.session_state['resident_logged'] = False
-                    st.session_state.pop('resident_data', None)
-                    st.rerun()
+                        st.warning('Please enter a new password.')
 
         # 7. BLOCK & MASTER ADMIN PORTAL TAB
         with tab_admin:
@@ -719,7 +778,7 @@ else:
 
                 # 7. AUDIT LOGS
                 elif admin_action == '📋 Audit Logs':
-                    st.markdown('#### 📜 Password Change Audit Logs')
+                    st.markdown('#### 📜 Password Change & Login Audit Logs')
                     try:
                         with engine.connect() as conn:
                             logs_df = pd.read_sql(text('SELECT * FROM togethespace_v4_password_logs ORDER BY timestamp DESC LIMIT 100;'), con=conn)
@@ -729,7 +788,7 @@ else:
                         else:
                             st.dataframe(logs_df, use_container_width=True)
                     except Exception as e:
-                        st.info('Audit log table will populate once password updates or requests are processed.')
+                        st.info('Audit log table will populate once logins or password changes are processed.')
 
     except Exception as e:
         st.error(f'Database connection or query failed: {e}')
