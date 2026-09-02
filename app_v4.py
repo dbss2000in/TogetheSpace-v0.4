@@ -11,34 +11,47 @@ st.set_page_config(
     layout='wide',
 )
 
-# --- SEA GREEN THEME & CUSTOM STYLING ---
+# --- FACEBOOK & SEA GREEN THEME CUSTOM STYLING ---
 st.markdown("""
     <style>
     .main {
-        background-color: #f4fbf7;
+        background-color: #f0f2f5;
     }
     .sea-green-card {
-        background-color: #eaf4ed;
-        border-left: 6px solid #2e8b57;
-        border-radius: 8px;
-        padding: 18px;
-        margin-bottom: 16px;
-        box-shadow: 0 3px 6px rgba(46, 139, 87, 0.1);
+        background-color: #ffffff;
+        border: 1px solid #e4e6eb;
+        border-radius: 10px;
+        padding: 16px;
+        margin-bottom: 12px;
+        box-shadow: 0 1px 2px rgba(0, 0, 0, 0.1);
     }
     .notice-card {
-        background-color: #e3f2fd;
-        border-left: 6px solid #1976d2;
+        background-color: #e7f3ff;
+        border-left: 5px solid #1877f2;
         border-radius: 8px;
-        padding: 18px;
-        margin-bottom: 16px;
-        box-shadow: 0 3px 6px rgba(25, 118, 210, 0.1);
+        padding: 16px;
+        margin-bottom: 12px;
+        box-shadow: 0 1px 2px rgba(0, 0, 0, 0.05);
     }
-    .chat-bubble {
-        background-color: #e1f5fe;
-        border-radius: 10px;
-        padding: 12px 16px;
-        margin-bottom: 10px;
-        border-left: 4px solid #0288d1;
+    .chat-container {
+        background-color: #ffffff;
+        border: 1px solid #e4e6eb;
+        border-radius: 12px;
+        padding: 20px;
+        max-height: 500px;
+        overflow-y: auto;
+        box-shadow: 0 1px 3px rgba(0, 0, 0, 0.1);
+    }
+    .messenger-bubble {
+        background-color: #f0f2f5;
+        color: #050505;
+        border-radius: 18px;
+        padding: 10px 14px;
+        margin-bottom: 8px;
+        max-width: 75%;
+        display: inline-block;
+        box-shadow: 0 1px 2px rgba(0,0,0,0.05);
+        word-break: break-word;
     }
     .admin-card {
         background-color: #fff3e0;
@@ -52,23 +65,23 @@ st.markdown("""
         background-color: #ffffff;
         padding: 30px;
         border-radius: 12px;
-        box-shadow: 0 4px 12px rgba(46, 139, 87, 0.15);
+        box-shadow: 0 4px 12px rgba(0, 0, 0, 0.1);
         max-width: 550px;
         margin: 50px auto;
-        border-top: 6px solid #2e8b57;
+        border-top: 6px solid #1877f2;
     }
     .stTabs [data-baseweb="tab-list"] {
         gap: 12px;
     }
     .stTabs [data-baseweb="tab"] {
-        background-color: #e8f5e9;
+        background-color: #e4e6eb;
         border-radius: 6px 6px 0px 0px;
         padding: 10px 20px;
         font-weight: 600;
-        color: #2e7d32;
+        color: #050505;
     }
     .stTabs [aria-selected="true"] {
-        background-color: #2e7d32 !important;
+        background-color: #1877f2 !important;
         color: white !important;
     }
     </style>
@@ -154,8 +167,8 @@ else:
         if not st.session_state['authenticated']:
             st.markdown("""
                 <div class="login-container">
-                    <h2 style="color: #1b5e20; text-align: center; margin-bottom: 10px;">🔒 Secure Access Portal</h2>
-                    <p style="text-align: center; color: #4f5d54; font-size: 0.95em;">
+                    <h2 style="color: #1877f2; text-align: center; margin-bottom: 10px;">🔒 Secure Access Portal</h2>
+                    <p style="text-align: center; color: #65676b; font-size: 0.95em;">
                         Select your login type and authenticate to enter TogetheSpace.
                     </p>
                 </div>
@@ -359,11 +372,11 @@ else:
                         
                         st.markdown(f"""
                             <div class="sea-green-card">
-                                <h3 style="color: #1b5e20; margin-bottom: 2px;">{row.get('Full Name')} {fav_badge}</h3>
-                                <p style="color: #4f5d54; font-size: 0.95em; margin-bottom: 10px;">
+                                <h3 style="color: #050505; margin-bottom: 2px;">{row.get('Full Name')} {fav_badge}</h3>
+                                <p style="color: #65676b; font-size: 0.95em; margin-bottom: 10px;">
                                     {org_badge} {user_id_badge} | <b>Bio:</b> {row.get('Bio') or 'N/A'}
                                 </p>
-                                <hr style="margin: 8px 0; border-color: #c8e6c9;">
+                                <hr style="margin: 8px 0; border-color: #e4e6eb;">
                                 <p style="font-size: 0.9em; margin: 4px 0;">
                                     📍 <b>Address:</b> <a href="{map_url}" target="_blank">{row.get('Address')} (View on Map)</a><br>
                                     📞 <b>Phone:</b> <a href="tel:{row.get('Phone Number')}">{row.get('Phone Number')}</a> | 
@@ -377,23 +390,23 @@ else:
             except Exception as e:
                 st.warning(f'Directory loading failed. Details: {e}')
 
-        # 2. FEED & SEA GREEN CARDS TAB
+        # 2. FACEBOOK-STYLE COMMUNITY FEED TAB
         with tab_feed:
-            st.markdown(f'### 🌊 Community Feed & Posts ({user_block if not is_master else "All Blocks / Global"})')
+            st.markdown(f'### 🏡 Community Feed ({user_block if not is_master else "All Blocks / Global"})')
             
-            with st.expander('➕ Publish a New Community Post (with Image / Audio / Video)', expanded=False):
+            with st.expander('✏️ Create Post ("What\'s on your mind?")', expanded=False):
                 with st.form('inline_feed_form', clear_on_submit=True):
-                    new_title = st.text_input('Title / Subject')
+                    new_title = st.text_input('Post Title / Headline')
                     new_category = st.selectbox('Category', ['General', 'Notice', 'Announcement', 'Community Update', 'Discussion'])
                     new_author = st.text_input('Author Name', value=current_user.get('Full Name', ''))
-                    new_content = st.text_area('Content / Details')
+                    new_content = st.text_area('What\'s on your mind?')
                     
                     st.markdown('#### 📎 Media Attachments')
-                    st.info('ℹ️ **URL Guide:** Provide a direct public link (e.g., Supabase Storage Public URL or GitHub Raw link) ending in supported extensions: 🖼️ Images (`.jpg`, `.png`, `.webp`, `.gif`) | 🎵 Audio (`.mp3`, `.wav`) | 🎬 Video (`.mp4`, `.webm`, `.mov`).')
+                    st.info('ℹ️ **URL Guide:** Provide a direct public link ending in supported extensions: 🖼️ Images (`.jpg`, `.png`, `.webp`, `.gif`) | 🎵 Audio (`.mp3`, `.wav`) | 🎬 Video (`.mp4`, `.webm`, `.mov`).')
                     media_type = st.selectbox('Media Type', ['None', 'Image', 'Audio', 'Video'])
                     media_url = st.text_input('Media URL (Direct link to image, audio, or video file)')
                     
-                    submitted = st.form_submit_button('Publish Post')
+                    submitted = st.form_submit_button('Post')
                     if submitted:
                         if new_title and new_content:
                             final_content = new_content
@@ -411,13 +424,12 @@ else:
                                     text('INSERT INTO togethespace_v4_records (title, category, content, author, likes, "Block", "Visibility", "Broadcast_Status") VALUES (:title, :category, :content, :author, 0, :block, :visibility, :status)'),
                                     {'title': new_title, 'category': new_category, 'content': final_content, 'author': new_author, 'block': post_block, 'visibility': 'Block-Only', 'status': 'None'}
                                 )
-                            st.success(f'Post successfully published for {post_block} with media attachment!')
+                            st.success('Post published to feed!')
                             st.rerun()
                         else:
                             st.warning('Please provide both a Title and Content.')
 
             st.markdown('---')
-            st.markdown('#### Feed Posts')
             try:
                 with engine.connect() as conn:
                     if is_master:
@@ -430,28 +442,36 @@ else:
                         )
                 
                 if df_feed.empty:
-                    st.info('No posts found in your block feed yet.')
+                    st.info('No posts found in your feed yet.')
                 else:
                     for idx, row in df_feed.iterrows():
                         likes_count = row['likes'] if 'likes' in row and pd.notna(row['likes']) else 0
-                        vis_label = f"🏢 Block: {row.get('Block', 'General')} | 🌐 Visibility: {row.get('Visibility', 'Block-Only')}"
+                        vis_label = f"🏢 Block: {row.get('Block', 'General')} • 🌐 {row.get('Visibility', 'Block-Only')}"
                         if row.get('Broadcast_Status') == 'Pending':
-                            vis_label += " | ⏳ Cross-Block Broadcast Pending Approval"
+                            vis_label += " • ⏳ Broadcast Pending"
                         
+                        # Facebook-like Card Wrapper
                         st.markdown(f"""
                             <div class="sea-green-card">
-                                <h4 style="color: #1b5e20; margin-bottom: 5px;">{row['title']} (ID: {row['id']})</h4>
-                                <p style="color: #4f5d54; font-size: 0.9em; margin-bottom: 5px;">
-                                    <b>Category:</b> {row['category']} | <b>Author:</b> {row['author'] or 'Anonymous'} | <b>Posted:</b> {row['created_at']}
-                                </p>
-                                <p style="color: #0277bd; font-size: 0.85em; margin-bottom: 10px;">{vis_label}</p>
-                                <div style="color: #263238; font-size: 1.05em;">{row['content']}</div>
+                                <div style="display: flex; align-items: center; margin-bottom: 8px;">
+                                    <div style="background-color: #1877f2; color: white; width: 40px; height: 40px; border-radius: 50%; display: flex; align-items: center; justify-content: center; font-weight: bold; margin-right: 10px;">
+                                        {str(row['author'] or 'A')[0].upper()}
+                                    </div>
+                                    <div>
+                                        <b style="color: #050505; font-size: 1.05em;">{row['author'] or 'Anonymous'}</b> <span style="color: #65676b; font-size: 0.85em;">shared a post</span><br>
+                                        <span style="color: #65676b; font-size: 0.75em;">{row['created_at']} • {vis_label}</span>
+                                    </div>
+                                </div>
+                                <h4 style="color: #050505; margin-top: 4px; margin-bottom: 6px;">{row['title']}</h4>
+                                <span style="background-color: #e4e6eb; color: #050505; padding: 2px 8px; border-radius: 4px; font-size: 0.8em; font-weight: 600;">{row['category']}</span>
+                                <div style="color: #050505; font-size: 1.02em; margin-top: 10px; margin-bottom: 10px;">{row['content']}</div>
+                                <hr style="margin: 6px 0; border-color: #e4e6eb;">
                             </div>
                         """, unsafe_allow_html=True)
                         
                         col_like, col_space = st.columns([1, 6])
                         with col_like:
-                            if st.button(f'❤️ Like ({likes_count})', key=f'like_{row["id"]}'):
+                            if st.button(f'👍 Like ({likes_count})', key=f'like_{row["id"]}'):
                                 with engine.begin() as conn:
                                     conn.execute(
                                         text('UPDATE togethespace_v4_records SET likes = COALESCE(likes, 0) + 1 WHERE id = :id'),
@@ -485,30 +505,58 @@ else:
                     for idx, row in df_notices.iterrows():
                         st.markdown(f"""
                             <div class="notice-card">
-                                <h4 style="color: #0d47a1; margin-bottom: 5px;">🔔 {row['title']} (Block: {row.get('Block', 'General')})</h4>
-                                <p style="color: #546e7a; font-size: 0.9em; margin-bottom: 10px;">
+                                <h4 style="color: #1877f2; margin-bottom: 5px;">🔔 {row['title']} (Block: {row.get('Block', 'General')})</h4>
+                                <p style="color: #65676b; font-size: 0.9em; margin-bottom: 10px;">
                                     <b>Posted by:</b> {row['author'] or 'Admin'} | <b>Date:</b> {row['created_at']}
                                 </p>
-                                <div style="color: #1a237e; font-size: 1.05em;">{row['content']}</div>
+                                <div style="color: #050505; font-size: 1.05em;">{row['content']}</div>
                             </div>
                         """, unsafe_allow_html=True)
             except Exception as e:
                 st.warning(f'Could not load notices: {e}')
 
-        # 4. CHAT TAB
+        # 4. FACEBOOK MESSENGER-STYLE CHAT TAB
         with tab_chat:
-            st.markdown('### 💬 Real-Time Community Chat Facility (with Media Support)')
+            st.markdown('### 💬 Community Messenger (Real-Time Chat with Media Support)')
             
+            # Messenger Container
+            st.markdown('<div class="chat-container">', unsafe_allow_html=True)
+            try:
+                with engine.connect() as conn:
+                    df_chat = pd.read_sql(text('SELECT * FROM togethespace_v4_chat ORDER BY created_at ASC LIMIT 50;'), con=conn)
+                
+                if df_chat.empty:
+                    st.info('No messages yet. Start the conversation below!')
+                else:
+                    for idx, row in df_chat.iterrows():
+                        is_me = (row['sender'] == current_user.get('Full Name'))
+                        align_style = "text-align: right;" if is_me else "text-align: left;"
+                        bubble_bg = "#0084ff" if is_me else "#e4e6eb"
+                        bubble_color = "white" if is_me else "#050505"
+                        
+                        st.markdown(f"""
+                            <div style="{align_style} margin-bottom: 10px;">
+                                <span style="font-size: 0.75em; color: #65676b; display: block; margin-bottom: 2px;">{row['sender']} • {row['created_at']}</span>
+                                <div style="background-color: {bubble_bg}; color: {bubble_color}; border-radius: 18px; padding: 10px 14px; display: inline-block; max-width: 75%; text-align: left; word-break: break-word; box-shadow: 0 1px 2px rgba(0,0,0,0.05);">
+                                    {row['message']}
+                                </div>
+                            </div>
+                        """, unsafe_allow_html=True)
+            except Exception as e:
+                st.warning(f'Chat loading error: {e}')
+            st.markdown('</div>', unsafe_allow_html=True)
+
+            st.markdown('---')
             with st.form('chat_form', clear_on_submit=True):
                 chat_sender = st.text_input('Your Name', value=current_user.get('Full Name', ''))
-                chat_msg = st.text_area('Message')
+                chat_msg = st.text_area('Aa (Type a message...)')
                 
-                st.markdown('#### 📎 Chat Media Attachment')
-                st.caption('Provide a direct public link (e.g., Supabase Storage Public URL) ending in supported extensions: 🖼️ Images (.jpg, .png) | 🎵 Audio (.mp3, .wav) | 🎬 Video (.mp4, .webm).')
+                st.markdown('#### 📎 Messenger Media Attachment')
+                st.caption('Provide a direct public link ending in supported extensions: 🖼️ Images (.jpg, .png) | 🎵 Audio (.mp3, .wav) | 🎬 Video (.mp4, .webm).')
                 chat_media_type = st.selectbox('Media Type', ['None', 'Image', 'Audio', 'Video'], key='chat_media_type')
                 chat_media_url = st.text_input('Media URL (Direct link)', key='chat_media_url')
 
-                send_btn = st.form_submit_button('Send Message')
+                send_btn = st.form_submit_button('Send')
                 if send_btn:
                     if chat_sender and chat_msg:
                         final_msg = chat_msg
@@ -525,29 +573,9 @@ else:
                                 text('INSERT INTO togethespace_v4_chat (sender, message) VALUES (:sender, :message)'),
                                 {'sender': chat_sender, 'message': final_msg}
                             )
-                        st.success('Message posted to chat!')
                         st.rerun()
                     else:
                         st.warning('Please enter your name and a message.')
-
-            st.markdown('---')
-            st.markdown('#### Recent Chat History')
-            try:
-                with engine.connect() as conn:
-                    df_chat = pd.read_sql(text('SELECT * FROM togethespace_v4_chat ORDER BY created_at DESC LIMIT 50;'), con=conn)
-                
-                if df_chat.empty:
-                    st.info('No chat messages yet. Start the conversation above!')
-                else:
-                    for idx, row in df_chat.iterrows():
-                        st.markdown(f"""
-                            <div class="chat-bubble">
-                                <b>{row['sender']}</b> <span style="font-size: 0.8em; color: #78909c;">({row['created_at']})</span><br>
-                                <div>{row['message']}</div>
-                            </div>
-                        """, unsafe_allow_html=True)
-            except Exception as e:
-                st.warning(f'Chat loading error: {e}')
 
         # 5. SOCIAL CHANNELS TAB
         with tab_social:
@@ -558,17 +586,17 @@ else:
                     <div class="sea-green-card">
                         <h4>💬 WhatsApp Community</h4>
                         <p>Instant messaging and community group broadcasts.</p>
-                        <a href="https://whatsapp.com" target="_blank" style="color: #2e8b57; font-weight: bold;">Open WhatsApp &rarr;</a>
+                        <a href="https://whatsapp.com" target="_blank" style="color: #1877f2; font-weight: bold;">Open WhatsApp &rarr;</a>
                     </div>
                     <div class="sea-green-card">
                         <h4>📘 Facebook Group</h4>
                         <p>Neighborhood discussions and event photo sharing.</p>
-                        <a href="https://facebook.com" target="_blank" style="color: #2e8b57; font-weight: bold;">Visit Facebook &rarr;</a>
+                        <a href="https://facebook.com" target="_blank" style="color: #1877f2; font-weight: bold;">Visit Facebook &rarr;</a>
                     </div>
                     <div class="sea-green-card">
                         <h4>📸 Instagram Handle</h4>
                         <p>Community stories and highlights.</p>
-                        <a href="https://instagram.com" target="_blank" style="color: #2e8b57; font-weight: bold;">Follow Instagram &rarr;</a>
+                        <a href="https://instagram.com" target="_blank" style="color: #1877f2; font-weight: bold;">Follow Instagram &rarr;</a>
                     </div>
                 """, unsafe_allow_html=True)
             with col_s2:
@@ -576,17 +604,17 @@ else:
                     <div class="sea-green-card">
                         <h4>🐦 Twitter / X Feed</h4>
                         <p>Real-time community updates and announcements.</p>
-                        <a href="https://twitter.com" target="_blank" style="color: #2e8b57; font-weight: bold;">Follow Twitter &rarr;</a>
+                        <a href="https://twitter.com" target="_blank" style="color: #1877f2; font-weight: bold;">Follow Twitter &rarr;</a>
                     </div>
                     <div class="sea-green-card">
                         <h4>💼 LinkedIn Network</h4>
                         <p>Professional updates and institutional notices.</p>
-                        <a href="https://linkedin.com" target="_blank" style="color: #2e8b57; font-weight: bold;">Connect LinkedIn &rarr;</a>
+                        <a href="https://linkedin.com" target="_blank" style="color: #1877f2; font-weight: bold;">Connect LinkedIn &rarr;</a>
                     </div>
                     <div class="sea-green-card">
                         <h4>🌐 Official Web Portal & Code</h4>
                         <p>Primary secure application hub and repository.</p>
-                        <a href="https://supabase.com" target="_blank" style="color: #2e8b57; font-weight: bold;">Open Portal &rarr;</a>
+                        <a href="https://supabase.com" target="_blank" style="color: #1877f2; font-weight: bold;">Open Portal &rarr;</a>
                     </div>
                 """, unsafe_allow_html=True)
 
