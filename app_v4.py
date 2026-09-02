@@ -1,4 +1,5 @@
 import urllib.parse
+import bcrypt
 import pandas as pd
 import streamlit as st
 from sqlalchemy import create_engine, text
@@ -95,6 +96,24 @@ else:
         
         with engine.connect() as conn:
             conn.execute(text('SELECT 1;'))
+
+        # Helper function to hash passwords securely
+        def hash_password(plain_text_password):
+            return bcrypt.hashpw(plain_text_password.encode('utf-8'), bcrypt.gensalt()).decode('utf-8')
+
+        # Helper function to verify passwords safely (supporting legacy plain text too)
+        def verify_password(plain_text_password, stored_password):
+            if not stored_password:
+                return False
+            # If stored password is a bcrypt hash (starts with $2b$)
+            if stored_password.startswith('$2b$'):
+                try:
+                    return bcrypt.checkpw(plain_text_password.encode('utf-8'), stored_password.encode('utf-8'))
+                except Exception:
+                    return False
+            else:
+                # Legacy plain text support (e.g. Welcome2026!)
+                return plain_text_password == stored_password
 
         # --- AUTHENTICATION GATE ---
         if 'authenticated' not in st.session_state:
@@ -193,29 +212,43 @@ else:
                             extracted_uid = selected_user_str.split(' — ')[0].strip()
                             
                             with engine.connect() as conn:
-                                auth_query = text('SELECT * FROM togethespace_v4_directory WHERE "User ID" = :uid AND "Password" = :pwd;')
-                                auth_res = pd.read_sql(auth_query, con=conn, params={'uid': extracted_uid, 'pwd': login_pwd})
+                                auth_query = text('SELECT * FROM togethespace_v4_directory WHERE "User ID" = :uid;')
+                                auth_res = pd.read_sql(auth_query, con=conn, params={'uid': extracted_uid})
                             
                             if not auth_res.empty:
                                 user_record = auth_res.iloc[0].to_dict()
-                                st.session_state['authenticated'] = True
-                                st.session_state['is_admin_session'] = False
-                                st.session_state['user_record'] = user_record
+                                stored_pwd_val = user_record.get('Password', '')
                                 
-                                with engine.begin() as conn:
-                                    conn.execute(
-                                        text('INSERT INTO togethespace_v4_password_logs (changed_by, target_userid, action_type, details) VALUES (:by, :target, :action, :details)'),
-                                        {
-                                            'by': user_record.get('Full Name', extracted_uid),
-                                            'target': extracted_uid,
-                                            'action': 'Resident Login',
-                                            'details': f'Successful login recorded for {user_record.get("Full Name")} ({user_record.get("Organization")}).'
-                                        }
-                                    )
-                                st.success('Login successful! Loading application...')
-                                st.rerun()
+                                if verify_password(login_pwd, stored_pwd_val):
+                                    # If they logged in successfully with legacy plain text, auto-upgrade their password to encrypted hash!
+                                    if not stored_pwd_val.startswith('$2b$'):
+                                        new_hash = hash_password(login_pwd)
+                                        with engine.begin() as conn:
+                                            conn.execute(
+                                                text('UPDATE togethespace_v4_directory SET "Password" = :pwd WHERE "User ID" = :uid'),
+                                                {'pwd': new_hash, 'uid': extracted_uid}
+                                            )
+
+                                    st.session_state['authenticated'] = True
+                                    st.session_state['is_admin_session'] = False
+                                    st.session_state['user_record'] = user_record
+                                    
+                                    with engine.begin() as conn:
+                                        conn.execute(
+                                            text('INSERT INTO togethespace_v4_password_logs (changed_by, target_userid, action_type, details) VALUES (:by, :target, :action, :details)'),
+                                            {
+                                                'by': user_record.get('Full Name', extracted_uid),
+                                                'target': extracted_uid,
+                                                'action': 'Resident Login',
+                                                'details': f'Successful encrypted login recorded for {user_record.get("Full Name")}.'
+                                            }
+                                        )
+                                    st.success('Login successful! Loading application...')
+                                    st.rerun()
+                                else:
+                                    st.error('❌ Incorrect password. Please try again.')
                             else:
-                                st.error('❌ Incorrect password or User ID. Please try again.')
+                                st.error('❌ User ID not found.')
 
             st.stop()
 
@@ -317,7 +350,7 @@ else:
             except Exception as e:
                 st.warning(f'Directory loading failed. Details: {e}')
 
-        # 2. FEED & SEA GREEN CARDS TAB (Block-Centric Visibility)
+        # 2. FEED & SEA GREEN CARDS TAB
         with tab_feed:
             st.markdown(f'### 🌊 Community Feed & Posts ({user_block if not is_master else "All Blocks / Global"})')
             
@@ -387,7 +420,7 @@ else:
             except Exception as e:
                 st.warning(f'Unable to load feed records. Details: {e}')
 
-        # 3. NOTICES TAB (Block-Centric Visibility)
+        # 3. NOTICES TAB
         with tab_notices:
             st.markdown(f'### 📢 Official Notices & Announcements ({user_block if not is_master else "All Blocks"})')
             try:
@@ -504,6 +537,7 @@ else:
                     req_submit = st.form_submit_button('Submit Password Change Request')
                     if req_submit:
                         if new_r_pwd:
+                            hashed_new_pwd = hash_password(new_r_pwd)
                             with engine.begin() as conn:
                                 conn.execute(
                                     text('INSERT INTO togethespace_v4_password_requests (requested_by, target_userid, target_name, block, new_password, status) VALUES (:by, :target, :name, :block, :pwd, :status)'),
@@ -512,7 +546,7 @@ else:
                                         'target': str(r.get('User ID')),
                                         'name': r.get('Full Name'),
                                         'block': r.get('Organization', 'General'),
-                                        'pwd': new_r_pwd,
+                                        'pwd': hashed_new_pwd,
                                         'status': 'Pending'
                                     }
                                 )
@@ -520,7 +554,7 @@ else:
                         else:
                             st.warning('Please enter a new password.')
 
-        # 7. ADMIN PORTAL TAB (Cross-Block Broadcast Requests & Approvals)
+        # 7. ADMIN PORTAL TAB
         with tab_admin:
             st.markdown('### 🔐 Administrator Portal')
             
@@ -592,7 +626,7 @@ else:
                             else:
                                 st.warning('Please fill in title and content.')
 
-                # 2. REQUEST / MANAGE CROSS-BLOCK BROADCASTS
+                # 2. CROSS-BLOCK BROADCASTS
                 elif admin_action == '🌐 Request / Manage Cross-Block Broadcasts':
                     st.markdown('#### 🌐 Cross-Block Broadcast Management')
                     if admin_block == 'Master Admin':
@@ -708,6 +742,7 @@ else:
                         add_sub = st.form_submit_button('Insert New Member')
                         if add_sub:
                             if full_name:
+                                hashed_pwd = hash_password(password) if password else hash_password('Welcome2026!')
                                 with engine.begin() as conn:
                                     conn.execute(
                                         text("""
@@ -717,13 +752,13 @@ else:
                                             (:org, :full_name, :userid, :password, :address, :phone, :wa_call, :wa_chat, :email, :website, :blood, :allergies, :med_cond, :meds, :em_name, :em_phone, :bio)
                                         """),
                                         {
-                                            'org': org, 'full_name': full_name, 'userid': userid, 'password': password,
+                                            'org': org, 'full_name': full_name, 'userid': userid, 'password': hashed_pwd,
                                             'address': address, 'phone': phone, 'wa_call': wa_call, 'wa_chat': wa_chat,
                                             'email': email, 'website': website, 'blood': blood, 'allergies': allergies,
                                             'med_cond': med_cond, 'meds': meds, 'em_name': em_name, 'em_phone': em_phone, 'bio': bio
                                         }
                                     )
-                                st.success('New member added successfully!')
+                                st.success('New member added successfully with encrypted password!')
                                 st.rerun()
                             else:
                                 st.warning('Full Name is required.')
@@ -751,7 +786,7 @@ else:
                                 with st.form('edit_dir_form'):
                                     e_name = st.text_input('Full Name', value=str(m_data.get('Full Name', '')))
                                     e_uid = st.text_input('User ID', value=str(m_data.get('User ID', '')))
-                                    e_pwd = st.text_input('Password', value=str(m_data.get('Password', '')))
+                                    e_pwd = st.text_input('New Password (leave blank to keep current)', type='password', value='')
                                     e_addr = st.text_input('Address', value=str(m_data.get('Address', '')))
                                     e_phone = st.text_input('Phone Number', value=str(m_data.get('Phone Number', '')))
                                     e_email = st.text_input('Email', value=str(m_data.get('Email', '')))
@@ -759,10 +794,17 @@ else:
                                     update_btn = st.form_submit_button('Save Changes')
                                     if update_btn:
                                         with engine.begin() as conn:
-                                            conn.execute(
-                                                text('UPDATE togethespace_v4_directory SET "Full Name" = :name, "User ID" = :uid, "Password" = :pwd, "Address" = :addr, "Phone Number" = :phone, "Email" = :email WHERE id = :id'),
-                                                {'name': e_name, 'uid': e_uid, 'pwd': e_pwd, 'addr': e_addr, 'phone': e_phone, 'email': e_email, 'id': m_id}
-                                            )
+                                            if e_pwd:
+                                                final_pwd_hash = hash_password(e_pwd)
+                                                conn.execute(
+                                                    text('UPDATE togethespace_v4_directory SET "Full Name" = :name, "User ID" = :uid, "Password" = :pwd, "Address" = :addr, "Phone Number" = :phone, "Email" = :email WHERE id = :id'),
+                                                    {'name': e_name, 'uid': e_uid, 'pwd': final_pwd_hash, 'addr': e_addr, 'phone': e_phone, 'email': e_email, 'id': m_id}
+                                                )
+                                            else:
+                                                conn.execute(
+                                                    text('UPDATE togethespace_v4_directory SET "Full Name" = :name, "User ID" = :uid, "Address" = :addr, "Phone Number" = :phone, "Email" = :email WHERE id = :id'),
+                                                    {'name': e_name, 'uid': e_uid, 'addr': e_addr, 'phone': e_phone, 'email': e_email, 'id': m_id}
+                                                )
                                         st.success('Member record updated successfully!')
                                         st.rerun()
 
@@ -827,7 +869,7 @@ else:
                                                     text('INSERT INTO togethespace_v4_password_logs (changed_by, target_userid, action_type, details) VALUES (:by, :target, :action, :details)'),
                                                     {'by': f'Master Admin (Approved {req["requested_by"]})', 'target': req['target_userid'], 'action': 'Approved Password Request', 'details': f'Approved request for {req["target_name"]}.'}
                                                 )
-                                            st.success(f'Request #{req["id"]} approved and password updated!')
+                                            st.success(f'Request #{req["id"]} approved and password updated securely!')
                                             st.rerun()
                                     with col_rej:
                                         if st.button(f'❌ Reject #{req["id"]}', key=f'rej_{req["id"]}'):
@@ -857,7 +899,8 @@ else:
 
                 # 9. EXPORT CREDENTIALS CSV
                 elif admin_action == '📥 Export Credentials CSV':
-                    st.markdown('#### 📥 Download Credentials CSV')
+                    st.markdown('#### 📥 Download Credentials Export')
+                    st.info('Note: Passwords are now securely encrypted/hashed. The CSV export will display hashed security strings for account protection.')
                     try:
                         with engine.connect() as conn:
                             if admin_block == 'Master Admin':
