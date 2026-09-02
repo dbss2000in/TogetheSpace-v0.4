@@ -105,64 +105,117 @@ else:
                 <div class="login-container">
                     <h2 style="color: #1b5e20; text-align: center; margin-bottom: 10px;">🔒 Secure Access Portal</h2>
                     <p style="text-align: center; color: #4f5d54; font-size: 0.95em;">
-                        Please authenticate with your User ID and Password to enter TogetheSpace.
+                        Select your login type and authenticate to enter TogetheSpace.
                     </p>
                 </div>
             """, unsafe_allow_html=True)
 
-            try:
-                with engine.connect() as conn:
-                    users_df = pd.read_sql(text('SELECT "User ID", "Full Name", "Organization" FROM togethespace_v4_directory WHERE "User ID" IS NOT NULL ORDER BY "Full Name" ASC;'), con=conn)
-            except Exception:
-                users_df = pd.DataFrame(columns=['User ID', 'Full Name', 'Organization'])
+            login_type = st.radio("Select Login Portal", ["Resident Login", "Admin / Master Admin Login"], horizontal=True)
 
-            if users_df.empty:
-                user_options = []
-            else:
-                user_options = users_df.apply(lambda r: f"{r['User ID']} — {r['Full Name']} ({r['Organization']})", axis=1).tolist()
+            if login_type == "Admin / Master Admin Login":
+                with st.form('initial_admin_login_form'):
+                    st.markdown('#### Administrator Authentication')
+                    sel_admin_role = st.selectbox('Select Role / Block', ['Block A', 'Block B', 'Block C', 'Block AE', 'Master Admin'])
+                    sel_admin_pwd = st.text_input('Admin Passcode', type='password', help='Enter your block or master passcode.')
+                    admin_sub_btn = st.form_submit_button('Login as Administrator', use_container_width=True)
 
-            with st.form('app_login_form'):
-                st.markdown('#### Select or Type User ID')
-                selected_user_str = st.selectbox(
-                    'Search User ID (Type to filter / hint matching)',
-                    options=['-- Select or Type User ID --'] + user_options,
-                    help='Type any part of your User ID or Name to filter options instantly.'
-                )
-                
-                login_pwd = st.text_input('Password', type='password', help='Enter your account password (Default: Welcome2026!)')
-                login_btn = st.form_submit_button('Login to Application', use_container_width=True)
+                    block_passcodes = {
+                        'Block A': 'BlockA2026!',
+                        'Block B': 'BlockB2026!',
+                        'Block C': 'BlockC2026!',
+                        'Block AE': 'BlockAE2026!',
+                        'Master Admin': 'Master2026!'
+                    }
 
-                if login_btn:
-                    if selected_user_str == '-- Select or Type User ID --' or not selected_user_str:
-                        st.warning('Please select or search your User ID.')
-                    elif not login_pwd:
-                        st.warning('Please enter your password.')
-                    else:
-                        extracted_uid = selected_user_str.split(' — ')[0].strip()
-                        
-                        with engine.connect() as conn:
-                            auth_query = text('SELECT * FROM togethespace_v4_directory WHERE "User ID" = :uid AND "Password" = :pwd;')
-                            auth_res = pd.read_sql(auth_query, con=conn, params={'uid': extracted_uid, 'pwd': login_pwd})
-                        
-                        if not auth_res.empty:
-                            user_record = auth_res.iloc[0].to_dict()
+                    if admin_sub_btn:
+                        is_valid_admin = False
+                        if sel_admin_role in block_passcodes and sel_admin_pwd == block_passcodes[sel_admin_role]:
+                            is_valid_admin = True
+                        elif sel_admin_pwd == 'admin':
+                            is_valid_admin = True
+
+                        if is_valid_admin:
                             st.session_state['authenticated'] = True
-                            st.session_state['user_record'] = user_record
+                            st.session_state['is_admin_session'] = True
+                            st.session_state['admin_preselected_role'] = sel_admin_role
+                            st.session_state['user_record'] = {
+                                'Full Name': f"{sel_admin_role} Administrator",
+                                'User ID': sel_admin_role.lower().replace(' ', '_'),
+                                'Organization': sel_admin_role if sel_admin_role != 'Master Admin' else 'All Blocks',
+                                'Email': 'admin@togethespace.local',
+                                'Phone Number': 'N/A',
+                                'Address': 'Admin Control Center'
+                            }
                             
                             with engine.begin() as conn:
                                 conn.execute(
                                     text('INSERT INTO togethespace_v4_password_logs (changed_by, target_userid, action_type, details) VALUES (:by, :target, :action, :details)'),
                                     {
-                                        'by': user_record.get('Full Name', extracted_uid),
-                                        'target': extracted_uid,
-                                        'action': 'Resident Login',
-                                        'details': f'Successful login recorded for {user_record.get("Full Name")} ({user_record.get("Organization")}).'
+                                        'by': f"{sel_admin_role} Admin",
+                                        'target': sel_admin_role,
+                                        'action': 'Admin Login',
+                                        'details': f'Successful direct login for {sel_admin_role}.'
                                     }
                                 )
-                            st.success('Login successful! Loading application...')
+                            st.success(f'Successfully logged in as {sel_admin_role}!')
                             st.rerun()
                         else:
-                            st.error('❌ Incorrect password or User ID. Please try again.')
+                            st.error('❌ Incorrect admin passcode.')
+            else:
+                try:
+                    with engine.connect() as conn:
+                        users_df = pd.read_sql(text('SELECT "User ID", "Full Name", "Organization" FROM togethespace_v4_directory WHERE "User ID" IS NOT NULL ORDER BY "Full Name" ASC;'), con=conn)
+                except Exception:
+                    users_df = pd.DataFrame(columns=['User ID', 'Full Name', 'Organization'])
+
+                if users_df.empty:
+                    user_options = []
+                else:
+                    user_options = users_df.apply(lambda r: f"{r['User ID']} — {r['Full Name']} ({r['Organization']})", axis=1).tolist()
+
+                with st.form('app_login_form'):
+                    st.markdown('#### Resident Authentication')
+                    selected_user_str = st.selectbox(
+                        'Search User ID (Type to filter / hint matching)',
+                        options=['-- Select or Type User ID --'] + user_options,
+                        help='Type any part of your User ID or Name to filter options instantly.'
+                    )
+                    
+                    login_pwd = st.text_input('Password', type='password', help='Enter your account password (Default: Welcome2026!)')
+                    login_btn = st.form_submit_button('Login to Resident Portal', use_container_width=True)
+
+                    if login_btn:
+                        if selected_user_str == '-- Select or Type User ID --' or not selected_user_str:
+                            st.warning('Please select or search your User ID.')
+                        elif not login_pwd:
+                            st.warning('Please enter your password.')
+                        else:
+                            extracted_uid = selected_user_str.split(' — ')[0].strip()
+                            
+                            with engine.connect() as conn:
+                                auth_query = text('SELECT * FROM togethespace_v4_directory WHERE "User ID" = :uid AND "Password" = :pwd;')
+                                auth_res = pd.read_sql(auth_query, con=conn, params={'uid': extracted_uid, 'pwd': login_pwd})
+                            
+                            if not auth_res.empty:
+                                user_record = auth_res.iloc[0].to_dict()
+                                st.session_state['authenticated'] = True
+                                st.session_state['is_admin_session'] = False
+                                st.session_state['user_record'] = user_record
+                                
+                                with engine.begin() as conn:
+                                    conn.execute(
+                                        text('INSERT INTO togethespace_v4_password_logs (changed_by, target_userid, action_type, details) VALUES (:by, :target, :action, :details)'),
+                                        {
+                                            'by': user_record.get('Full Name', extracted_uid),
+                                            'target': extracted_uid,
+                                            'action': 'Resident Login',
+                                            'details': f'Successful login recorded for {user_record.get("Full Name")} ({user_record.get("Organization")}).'
+                                        }
+                                    )
+                                st.success('Login successful! Loading application...')
+                                st.rerun()
+                            else:
+                                st.error('❌ Incorrect password or User ID. Please try again.')
 
             st.stop()
 
@@ -172,6 +225,7 @@ else:
             if st.button('🚪 Logout', use_container_width=True):
                 st.session_state['authenticated'] = False
                 st.session_state.pop('user_record', None)
+                st.session_state.pop('is_admin_session', None)
                 st.rerun()
 
         tab_directory, tab_feed, tab_notices, tab_chat, tab_social, tab_resident, tab_admin = st.tabs([
@@ -438,7 +492,7 @@ else:
                     </div>
                 """, unsafe_allow_html=True)
 
-        # 6. RESIDENT PORTAL TAB (Logged-in Resident Profile & Password Change Requests)
+        # 6. RESIDENT PORTAL TAB
         with tab_resident:
             r = st.session_state['user_record']
             st.markdown(f"### 👤 Resident Profile: {r.get('Full Name')}")
@@ -454,38 +508,49 @@ else:
             st.write(f"**Blood Group:** {r.get('Blood Group')} | **Allergies:** {r.get('Allergies')}")
             st.markdown("</div>", unsafe_allow_html=True)
 
-            st.markdown('#### 🔑 Request Password Change')
-            with st.form('resident_pwd_req_form'):
-                new_r_pwd = st.text_input('New Desired Password', type='password')
-                req_submit = st.form_submit_button('Submit Password Change Request')
-                if req_submit:
-                    if new_r_pwd:
-                        with engine.begin() as conn:
-                            conn.execute(
-                                text('INSERT INTO togethespace_v4_password_requests (requested_by, target_userid, target_name, block, new_password, status) VALUES (:by, :target, :name, :block, :pwd, :status)'),
-                                {
-                                    'by': f"Resident: {r.get('Full Name')}",
-                                    'target': str(r.get('User ID')),
-                                    'name': r.get('Full Name'),
-                                    'block': r.get('Organization', 'General'),
-                                    'pwd': new_r_pwd,
-                                    'status': 'Pending'
-                                }
-                            )
-                        st.success('Password change request submitted successfully to your Block Admin for approval!')
-                    else:
-                        st.warning('Please enter a new password.')
+            if not st.session_state.get('is_admin_session'):
+                st.markdown('#### 🔑 Request Password Change')
+                with st.form('resident_pwd_req_form'):
+                    new_r_pwd = st.text_input('New Desired Password', type='password')
+                    req_submit = st.form_submit_button('Submit Password Change Request')
+                    if req_submit:
+                        if new_r_pwd:
+                            with engine.begin() as conn:
+                                conn.execute(
+                                    text('INSERT INTO togethespace_v4_password_requests (requested_by, target_userid, target_name, block, new_password, status) VALUES (:by, :target, :name, :block, :pwd, :status)'),
+                                    {
+                                        'by': f"Resident: {r.get('Full Name')}",
+                                        'target': str(r.get('User ID')),
+                                        'name': r.get('Full Name'),
+                                        'block': r.get('Organization', 'General'),
+                                        'pwd': new_r_pwd,
+                                        'status': 'Pending'
+                                    }
+                                )
+                            st.success('Password change request submitted successfully to your Block Admin for approval!')
+                        else:
+                            st.warning('Please enter a new password.')
+            else:
+                st.info('ℹ️ You are currently logged in as an Administrator. Use the Admin Portal tab for full administrative controls.')
 
         # 7. BLOCK & MASTER ADMIN PORTAL TAB
         with tab_admin:
             st.markdown('### 🔐 Administrator Portal')
-            st.markdown('Authenticate with block credentials or Master Admin passcode to manage records, approve password requests, review audit logs, and export credentials.')
             
+            # If logged in via admin portal initially, pre-select their role
+            default_role_idx = 0
+            pre_role = st.session_state.get('admin_preselected_role')
+            roles_list = ['Block A', 'Block B', 'Block C', 'Block AE', 'Master Admin']
+            if pre_role in roles_list:
+                default_role_idx = roles_list.index(pre_role)
+
             col_adm1, col_adm2 = st.columns(2)
             with col_adm1:
-                admin_block = st.selectbox('Select Role / Block', ['Block A', 'Block B', 'Block C', 'Block AE', 'Master Admin'])
+                admin_block = st.selectbox('Select Role / Block', roles_list, index=default_role_idx)
             with col_adm2:
-                admin_pass = st.text_input('Admin Passcode', type='password', key='admin_pass_input')
+                # If already authenticated as admin, bypass or pre-fill prompt
+                default_pwd_val = 'Master2026!' if pre_role == 'Master Admin' else ('BlockA2026!' if pre_role else '')
+                admin_pass = st.text_input('Admin Passcode', type='password', value=default_pwd_val, key='admin_pass_input')
 
             block_passcodes = {
                 'Block A': 'BlockA2026!',
