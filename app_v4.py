@@ -126,14 +126,13 @@ else:
             conn.execute(text("""
                 ALTER TABLE togethespace_v4_directory ADD COLUMN IF NOT EXISTS "Social_Approved" BOOLEAN DEFAULT TRUE;
             """))
-            # Table for structured entry/modification formats with 200MB off-app storage references
             conn.execute(text("""
                 CREATE TABLE IF NOT EXISTS togethespace_v4_entry_requests (
                     id SERIAL PRIMARY KEY,
                     applicant_name VARCHAR(150),
                     applicant_userid VARCHAR(100),
                     block VARCHAR(50),
-                    request_type VARCHAR(50), -- Addition, Alteration, Modification, Deletion
+                    request_type VARCHAR(50),
                     form_payload JSONB,
                     passport_photo_url TEXT,
                     supporting_docs_url TEXT,
@@ -186,6 +185,75 @@ else:
             'Master Admin': hash_password('Master2026!')
         }
 
+        # Administrator Names, Identities, and Designations
+        ADMIN_PROFILES = {
+            'Block A': {
+                'Full Name': 'Aarav Mukherjee',
+                'User ID': 'admin_block_a_01',
+                'Organization': 'Block A',
+                'Designation': 'Block A Administrator',
+                'Email': 'aarav.mukherjee@togethespace.local',
+                'Phone Number': '+91-9876543210',
+                'Address': 'Block A Control Office, TogetheSpace',
+                'Blood Group': 'O+',
+                'Allergies': 'None',
+                'Avatar': '',
+                'Facebook': '', 'Instagram': '', 'Twitter': '', 'LinkedIn': '', 'Social_Approved': True
+            },
+            'Block B': {
+                'Full Name': 'Priya Sharma',
+                'User ID': 'admin_block_b_02',
+                'Organization': 'Block B',
+                'Designation': 'Block B Administrator',
+                'Email': 'priya.sharma@togethespace.local',
+                'Phone Number': '+91-9876543211',
+                'Address': 'Block B Control Office, TogetheSpace',
+                'Blood Group': 'A+',
+                'Allergies': 'None',
+                'Avatar': '',
+                'Facebook': '', 'Instagram': '', 'Twitter': '', 'LinkedIn': '', 'Social_Approved': True
+            },
+            'Block C': {
+                'Full Name': 'Rohan Verma',
+                'User ID': 'admin_block_c_03',
+                'Organization': 'Block C',
+                'Designation': 'Block C Administrator',
+                'Email': 'rohan.verma@togethespace.local',
+                'Phone Number': '+91-9876543212',
+                'Address': 'Block C Control Office, TogetheSpace',
+                'Blood Group': 'B+',
+                'Allergies': 'Dust',
+                'Avatar': '',
+                'Facebook': '', 'Instagram': '', 'Twitter': '', 'LinkedIn': '', 'Social_Approved': True
+            },
+            'Block AE': {
+                'Full Name': 'Ananya Das',
+                'User ID': 'admin_block_ae_04',
+                'Organization': 'Block AE',
+                'Designation': 'Block AE Administrator',
+                'Email': 'ananya.das@togethespace.local',
+                'Phone Number': '+91-9876543213',
+                'Address': 'Block AE Control Office, TogetheSpace',
+                'Blood Group': 'AB+',
+                'Allergies': 'None',
+                'Avatar': '',
+                'Facebook': '', 'Instagram': '', 'Twitter': '', 'LinkedIn': '', 'Social_Approved': True
+            },
+            'Master Admin': {
+                'Full Name': 'Vikramaditya Roy',
+                'User ID': 'master_superadmin_99',
+                'Organization': 'All Blocks',
+                'Designation': 'Master Super Administrator',
+                'Email': 'master.admin@togethespace.local',
+                'Phone Number': '+91-9999999999',
+                'Address': 'Central Governance Headquarters, TogetheSpace',
+                'Blood Group': 'B-',
+                'Allergies': 'None',
+                'Avatar': '',
+                'Facebook': '', 'Instagram': '', 'Twitter': '', 'LinkedIn': '', 'Social_Approved': True
+            }
+        }
+
         # --- AUTHENTICATION GATE ---
         if 'authenticated' not in st.session_state:
             st.session_state['authenticated'] = False
@@ -222,34 +290,22 @@ else:
                             st.session_state['authenticated'] = True
                             st.session_state['is_admin_session'] = True
                             st.session_state['admin_preselected_role'] = sel_admin_role
-                            st.session_state['user_record'] = {
-                                'Full Name': f"{sel_admin_role} Administrator",
-                                'User ID': sel_admin_role.lower().replace(' ', '_'),
-                                'Organization': sel_admin_role if sel_admin_role != 'Master Admin' else 'All Blocks',
-                                'Email': 'admin@togethespace.local',
-                                'Phone Number': 'N/A',
-                                'Address': 'Admin Control Center',
-                                'Blood Group': 'N/A',
-                                'Allergies': 'N/A',
-                                'Avatar': '',
-                                'Facebook': '',
-                                'Instagram': '',
-                                'Twitter': '',
-                                'LinkedIn': '',
-                                'Social_Approved': True
-                            }
+                            
+                            # Load specific admin profile with Name, ID, and Designation
+                            admin_profile = ADMIN_PROFILES.get(sel_admin_role, {})
+                            st.session_state['user_record'] = admin_profile
                             
                             with engine.begin() as conn:
                                 conn.execute(
                                     text('INSERT INTO togethespace_v4_password_logs (changed_by, target_userid, action_type, details) VALUES (:by, :target, :action, :details)'),
                                     {
-                                        'by': f"{sel_admin_role} Admin",
-                                        'target': sel_admin_role,
+                                        'by': f"{admin_profile.get('Full Name')} ({admin_profile.get('Designation')})",
+                                        'target': admin_profile.get('User ID'),
                                         'action': 'Admin Login',
-                                        'details': f'Successful encrypted login for {sel_admin_role}.'
+                                        'details': f"Successful encrypted login for {admin_profile.get('Full Name')} [{admin_profile.get('Designation')} - ID: {admin_profile.get('User ID')}]."
                                     }
                                 )
-                            st.success(f'Successfully logged in as {sel_admin_role}!')
+                            st.success(f"Successfully logged in as {admin_profile.get('Full Name')} ({admin_profile.get('Designation')} — ID: {admin_profile.get('User ID')})!")
                             st.rerun()
                         else:
                             st.error('❌ Incorrect admin passcode.')
@@ -362,7 +418,11 @@ else:
             try:
                 with engine.connect() as conn:
                     df = pd.read_sql(text('SELECT "Full Name", "Avatar" FROM togethespace_v4_directory WHERE "Full Name" IS NOT NULL;'), con=conn)
-                return dict(zip(df['Full Name'], df['Avatar']))
+                res_map = dict(zip(df['Full Name'], df['Avatar']))
+                # Include admin names
+                for ap in ADMIN_PROFILES.values():
+                    res_map[ap['Full Name']] = ap['Avatar']
+                return res_map
             except Exception:
                 return {}
 
@@ -469,7 +529,7 @@ else:
             except Exception as e:
                 st.warning(f'Directory loading failed. Details: {e}')
 
-        # 2. FACEBOOK-STYLE COMMUNITY FEED TAB (With direct 200MB file uploads offloaded to external storage)
+        # 2. FACEBOOK-STYLE COMMUNITY FEED TAB
         with tab_feed:
             st.markdown(f'### 🏡 Community Feed ({user_block if not is_master else "All Blocks / Global"})')
             
@@ -481,7 +541,7 @@ else:
                     new_content = st.text_area('What\'s on your mind?')
                     
                     st.markdown('#### 📂 Direct Media Upload (Up to 200 MB)')
-                    st.info('ℹ️ Upload media files directly. Stored securely on decentralized cloud storage (no central server bloat), viewable instantly by all members.')
+                    st.info('ℹ️ Upload media files directly. Stored securely on cloud storage, viewable instantly by all members.')
                     uploaded_media = st.file_uploader('Upload Image, Audio, or Video', type=['jpg', 'jpeg', 'png', 'gif', 'mp3', 'wav', 'mp4', 'webm', 'mov'], key='feed_media_upload')
                     
                     submitted = st.form_submit_button('Post')
@@ -489,7 +549,6 @@ else:
                         if new_title and new_content:
                             final_content = new_content
                             if uploaded_media is not None:
-                                # In production, uploaded_media is offloaded to Supabase Storage / S3. Here we simulate direct cloud storage URL reference.
                                 media_filename = uploaded_media.name
                                 media_type_ext = media_filename.split('.')[-1].lower()
                                 simulated_cloud_url = f"https://cloudstorage.togethespace.local/media/{urllib.parse.quote(media_filename)}"
@@ -599,7 +658,7 @@ else:
             except Exception as e:
                 st.warning(f'Could not load notices: {e}')
 
-        # 4. FACEBOOK MESSENGER-STYLE CHAT TAB (With 200MB direct file uploads offloaded to external storage)
+        # 4. FACEBOOK MESSENGER-STYLE CHAT TAB
         with tab_chat:
             st.markdown('### 💬 Community Messenger (Real-Time Chat with Direct 200MB Media Uploads & Avatars)')
             
@@ -724,124 +783,140 @@ else:
                     </div>
                 """, unsafe_allow_html=True)
 
-        # 6. RESIDENT PORTAL TAB (With Formal Addition / Alteration / Modification / Deletion Format & 200MB Uploads)
+        # 6. RESIDENT PORTAL TAB
         with tab_resident:
             r = st.session_state['user_record']
-            st.markdown(f"### 👤 Resident Profile: {r.get('Full Name')}")
+            is_admin_user = st.session_state.get('is_admin_session', False)
             
-            curr_avatar_url = r.get('Avatar', '')
-            avatar_preview_html = get_avatar_html(r.get('Full Name'), curr_avatar_url, size=80)
-
-            st.markdown(f"""
-                <div class="sea-green-card">
-                    <div style="display: flex; align-items: center; margin-bottom: 12px;">
-                        {avatar_preview_html}
-                        <div>
-                            <h3 style="color: #1b5e20; margin-bottom: 0px;">{r.get('Full Name')}</h3>
-                            <span style="color: #4f5d54;">User ID: {r.get('User ID')} | Block: {r.get('Organization')}</span>
+            # Display appropriate title and details whether resident or admin
+            if is_admin_user:
+                st.markdown(f"### 🛡️ Administrator Profile: {r.get('Full Name')}")
+                st.markdown(f"""
+                    <div class="sea-green-card">
+                        <div style="display: flex; align-items: center; margin-bottom: 12px;">
+                            <div>
+                                <h3 style="color: #1b5e20; margin-bottom: 0px;">{r.get('Full Name')}</h3>
+                                <span style="color: #4f5d54;"><b>Designation:</b> {r.get('Designation')} | <b>Member ID:</b> {r.get('User ID')} | <b>Jurisdiction:</b> {r.get('Organization')}</span>
+                            </div>
                         </div>
+                        <p style="margin: 4px 0;">📍 <b>Office Address:</b> {r.get('Address')}</p>
+                        <p style="margin: 4px 0;">📞 <b>Phone Number:</b> {r.get('Phone Number')}</p>
+                        <p style="margin: 4px 0;">✉️ <b>Email:</b> {r.get('Email')}</p>
                     </div>
-                    <p style="margin: 4px 0;">📍 <b>Address:</b> {r.get('Address')}</p>
-                    <p style="margin: 4px 0;">📞 <b>Phone Number:</b> {r.get('Phone Number')}</p>
-                    <p style="margin: 4px 0;">✉️ <b>Email:</b> {r.get('Email')}</p>
-                    <p style="margin: 4px 0;">🩸 <b>Blood Group:</b> {r.get('Blood Group', 'N/A')} | ⚠️ <b>Allergies:</b> {r.get('Allergies', 'N/A')}</p>
-                </div>
-            """, unsafe_allow_html=True)
+                """, unsafe_allow_html=True)
+            else:
+                curr_avatar_url = r.get('Avatar', '')
+                avatar_preview_html = get_avatar_html(r.get('Full Name'), curr_avatar_url, size=80)
 
-            # Avatar & Social Links Update Form
-            st.markdown('#### 🖼️ Update Avatar & Social Communication Links')
-            with st.form('avatar_social_update_form'):
-                new_avatar_input = st.text_input('Avatar Image URL (Direct public link)', value=curr_avatar_url)
-                new_fb = st.text_input('Facebook Profile / Group URL', value=r.get('Facebook', ''))
-                new_ig = st.text_input('Instagram Profile URL', value=r.get('Instagram', ''))
-                new_tw = st.text_input('Twitter / X Profile URL', value=r.get('Twitter', ''))
-                new_li = st.text_input('LinkedIn Profile URL', value=r.get('LinkedIn', ''))
-                
-                profile_sub = st.form_submit_button('Save Profile & Social Links')
-                if profile_sub:
-                    uid = r.get('User ID')
-                    with engine.begin() as conn:
-                        conn.execute(
-                            text('UPDATE togethespace_v4_directory SET "Avatar" = :av, "Facebook" = :fb, "Instagram" = :ig, "Twitter" = :tw, "LinkedIn" = :li, "Social_Approved" = FALSE WHERE "User ID" = :uid'),
-                            {'av': new_avatar_input, 'fb': new_fb, 'ig': new_ig, 'tw': new_tw, 'li': new_li, 'uid': uid}
-                        )
-                    st.session_state['user_record']['Avatar'] = new_avatar_input
-                    st.session_state['user_record']['Facebook'] = new_fb
-                    st.session_state['user_record']['Instagram'] = new_ig
-                    st.session_state['user_record']['Twitter'] = new_tw
-                    st.session_state['user_record']['LinkedIn'] = new_li
-                    st.session_state['user_record']['Social_Approved'] = False
-                    st.success('Profile and social links updated successfully! Pending admin approval for directory display.')
-                    st.rerun()
+                st.markdown(f"""
+                    <div class="sea-green-card">
+                        <div style="display: flex; align-items: center; margin-bottom: 12px;">
+                            {avatar_preview_html}
+                            <div>
+                                <h3 style="color: #1b5e20; margin-bottom: 0px;">{r.get('Full Name')}</h3>
+                                <span style="color: #4f5d54;">User ID: {r.get('User ID')} | Block: {r.get('Organization')}</span>
+                            </div>
+                        </div>
+                        <p style="margin: 4px 0;">📍 <b>Address:</b> {r.get('Address')}</p>
+                        <p style="margin: 4px 0;">📞 <b>Phone Number:</b> {r.get('Phone Number')}</p>
+                        <p style="margin: 4px 0;">✉️ <b>Email:</b> {r.get('Email')}</p>
+                        <p style="margin: 4px 0;">🩸 <b>Blood Group:</b> {r.get('Blood Group', 'N/A')} | ⚠️ <b>Allergies:</b> {r.get('Allergies', 'N/A')}</p>
+                    </div>
+                """, unsafe_allow_html=True)
 
-            st.markdown('---')
-            st.markdown('#### 📄 Formal Application Format for Entry Addition, Alteration, Modification, or Deletion')
-            st.info('ℹ️ Submit this formal format to the higher admin for review. Includes fields matching the directory, passport photograph upload, and supporting documentation (up to 200 MB offloaded to cloud storage).')
-            
-            with st.form('formal_entry_request_form'):
-                req_type = st.selectbox('Request Type', ['Addition', 'Alteration', 'Modification', 'Deletion'])
-                
-                c_f1, c_f2 = st.columns(2)
-                with c_f1:
-                    f_name = st.text_input('Full Name', value=r.get('Full Name', ''))
-                    f_userid = st.text_input('User ID', value=r.get('User ID', ''))
-                    f_block = st.text_input('Organization / Block', value=r.get('Organization', ''))
-                    f_addr = st.text_input('Address', value=r.get('Address', ''))
-                    f_phone = st.text_input('Phone Number', value=r.get('Phone Number', ''))
-                    f_email = st.text_input('Email', value=r.get('Email', ''))
-                with c_f2:
-                    f_wa_call = st.text_input('WhatsApp Call', value=r.get('WhatsApp Call', ''))
-                    f_wa_chat = st.text_input('WhatsApp Chat', value=r.get('WhatsApp Chat', ''))
-                    f_web = st.text_input('Website', value=r.get('Website', ''))
-                    f_blood = st.text_input('Blood Group', value=r.get('Blood Group', ''))
-                    f_allergies = st.text_input('Allergies', value=r.get('Allergies', ''))
-                    f_bio = st.text_area('Bio / Notes / Justification for Change', value=r.get('Bio', ''))
-
-                st.markdown('#### 🛂 Passport-Size Photograph & Supporting Documentation (Up to 200 MB)')
-                passport_file = st.file_uploader('Upload Passport-Size Photograph', type=['jpg', 'jpeg', 'png'])
-                supporting_file = st.file_uploader('Upload Valid Supporting Documentation (PDF, Images, Docs up to 200 MB)', type=['pdf', 'jpg', 'jpeg', 'png', 'doc', 'docx'])
-
-                format_sub = st.form_submit_button('Submit Formal Format to Higher Admin')
-                if format_sub:
-                    if f_name and f_userid:
-                        # Simulated off-app decentralized cloud storage URL references for 200MB limit
-                        pass_url = f"https://cloudstorage.togethespace.local/passport/{urllib.parse.quote(passport_file.name)}" if passport_file else ""
-                        supp_url = f"https://cloudstorage.togethespace.local/docs/{urllib.parse.quote(supporting_file.name)}" if supporting_file else ""
-                        
-                        payload_data = {
-                            "Full Name": f_name,
-                            "User ID": f_userid,
-                            "Organization": f_block,
-                            "Address": f_addr,
-                            "Phone Number": f_phone,
-                            "Email": f_email,
-                            "WhatsApp Call": f_wa_call,
-                            "WhatsApp Chat": f_wa_chat,
-                            "Website": f_web,
-                            "Blood Group": f_blood,
-                            "Allergies": f_allergies,
-                            "Bio": f_bio
-                        }
-                        
-                        import json
+                # Avatar & Social Links Update Form for residents
+                st.markdown('#### 🖼️ Update Avatar & Social Communication Links')
+                with st.form('avatar_social_update_form'):
+                    new_avatar_input = st.text_input('Avatar Image URL (Direct public link)', value=curr_avatar_url)
+                    new_fb = st.text_input('Facebook Profile / Group URL', value=r.get('Facebook', ''))
+                    new_ig = st.text_input('Instagram Profile URL', value=r.get('Instagram', ''))
+                    new_tw = st.text_input('Twitter / X Profile URL', value=r.get('Twitter', ''))
+                    new_li = st.text_input('LinkedIn Profile URL', value=r.get('LinkedIn', ''))
+                    
+                    profile_sub = st.form_submit_button('Save Profile & Social Links')
+                    if profile_sub:
+                        uid = r.get('User ID')
                         with engine.begin() as conn:
                             conn.execute(
-                                text("""
-                                    INSERT INTO togethespace_v4_entry_requests 
-                                    (applicant_name, applicant_userid, block, request_type, form_payload, passport_photo_url, supporting_docs_url, status)
-                                    VALUES (:name, :uid, :block, :rtype, :payload::jsonb, :pass_url, :supp_url, 'Pending')
-                                """),
-                                {
-                                    'name': f_name, 'uid': f_userid, 'block': f_block, 'rtype': req_type,
-                                    'payload': json.dumps(payload_data), 'pass_url': pass_url, 'supp_url': supp_url
-                                }
+                                text('UPDATE togethespace_v4_directory SET "Avatar" = :av, "Facebook" = :fb, "Instagram" = :ig, "Twitter" = :tw, "LinkedIn" = :li, "Social_Approved" = FALSE WHERE "User ID" = :uid'),
+                                {'av': new_avatar_input, 'fb': new_fb, 'ig': new_ig, 'tw': new_tw, 'li': new_li, 'uid': uid}
                             )
-                        st.success('Formal entry request and supporting documents submitted successfully to Higher Admin!')
+                        st.session_state['user_record']['Avatar'] = new_avatar_input
+                        st.session_state['user_record']['Facebook'] = new_fb
+                        st.session_state['user_record']['Instagram'] = new_ig
+                        st.session_state['user_record']['Twitter'] = new_tw
+                        st.session_state['user_record']['LinkedIn'] = new_li
+                        st.session_state['user_record']['Social_Approved'] = False
+                        st.success('Profile and social links updated successfully! Pending admin approval for directory display.')
                         st.rerun()
-                    else:
-                        st.warning('Full Name and User ID are required.')
 
-            if not st.session_state.get('is_admin_session'):
+                st.markdown('---')
+                st.markdown('#### 📄 Formal Application Format for Entry Addition, Alteration, Modification, or Deletion')
+                st.info('ℹ️ Submit this formal format to the higher admin for review. Includes fields matching the directory, passport photograph upload, and supporting documentation (up to 200 MB offloaded to cloud storage).')
+                
+                with st.form('formal_entry_request_form'):
+                    req_type = st.selectbox('Request Type', ['Addition', 'Alteration', 'Modification', 'Deletion'])
+                    
+                    c_f1, c_f2 = st.columns(2)
+                    with c_f1:
+                        f_name = st.text_input('Full Name', value=r.get('Full Name', ''))
+                        f_userid = st.text_input('User ID', value=r.get('User ID', ''))
+                        f_block = st.text_input('Organization / Block', value=r.get('Organization', ''))
+                        f_addr = st.text_input('Address', value=r.get('Address', ''))
+                        f_phone = st.text_input('Phone Number', value=r.get('Phone Number', ''))
+                        f_email = st.text_input('Email', value=r.get('Email', ''))
+                    with c_f2:
+                        f_wa_call = st.text_input('WhatsApp Call', value=r.get('WhatsApp Call', ''))
+                        f_wa_chat = st.text_input('WhatsApp Chat', value=r.get('WhatsApp Chat', ''))
+                        f_web = st.text_input('Website', value=r.get('Website', ''))
+                        f_blood = st.text_input('Blood Group', value=r.get('Blood Group', ''))
+                        f_allergies = st.text_input('Allergies', value=r.get('Allergies', ''))
+                        f_bio = st.text_area('Bio / Notes / Justification for Change', value=r.get('Bio', ''))
+
+                    st.markdown('#### 🛂 Passport-Size Photograph & Supporting Documentation (Up to 200 MB)')
+                    passport_file = st.file_uploader('Upload Passport-Size Photograph', type=['jpg', 'jpeg', 'png'])
+                    supporting_file = st.file_uploader('Upload Valid Supporting Documentation (PDF, Images, Docs up to 200 MB)', type=['pdf', 'jpg', 'jpeg', 'png', 'doc', 'docx'])
+
+                    format_sub = st.form_submit_button('Submit Formal Format to Higher Admin')
+                    if format_sub:
+                        if f_name and f_userid:
+                            pass_url = f"https://cloudstorage.togethespace.local/passport/{urllib.parse.quote(passport_file.name)}" if passport_file else ""
+                            supp_url = f"https://cloudstorage.togethespace.local/docs/{urllib.parse.quote(supporting_file.name)}" if supporting_file else ""
+                            
+                            payload_data = {
+                                "Full Name": f_name,
+                                "User ID": f_userid,
+                                "Organization": f_block,
+                                "Address": f_addr,
+                                "Phone Number": f_phone,
+                                "Email": f_email,
+                                "WhatsApp Call": f_wa_call,
+                                "WhatsApp Chat": f_wa_chat,
+                                "Website": f_web,
+                                "Blood Group": f_blood,
+                                "Allergies": f_allergies,
+                                "Bio": f_bio
+                            }
+                            
+                            import json
+                            with engine.begin() as conn:
+                                conn.execute(
+                                    text("""
+                                        INSERT INTO togethespace_v4_entry_requests 
+                                        (applicant_name, applicant_userid, block, request_type, form_payload, passport_photo_url, supporting_docs_url, status)
+                                        VALUES (:name, :uid, :block, :rtype, :payload::jsonb, :pass_url, :supp_url, 'Pending')
+                                    """),
+                                    {
+                                        'name': f_name, 'uid': f_userid, 'block': f_block, 'rtype': req_type,
+                                        'payload': json.dumps(payload_data), 'pass_url': pass_url, 'supp_url': supp_url
+                                    }
+                                )
+                            st.success('Formal entry request and supporting documents submitted successfully to Higher Admin!')
+                            st.rerun()
+                        else:
+                            st.warning('Full Name and User ID are required.')
+
+            if not is_admin_user:
                 block_name = r.get("Organization")
                 admin_is_busy = is_admin_busy(block_name)
                 
@@ -902,13 +977,8 @@ else:
                                         st.success(f'Password change request sent to your {block_name} Block Admin for approval, and log recorded!')
                         else:
                             st.warning('Please enter a new password.')
-            else:
-                if is_master:
-                    st.info('👑 You are logged in as Master Admin. Use the Admin Portal tab to directly change any password without a request, or manage incoming Block Admin requests.')
-                else:
-                    st.info('ℹ️ You are logged in as a Block Admin. Go to the Admin Portal tab to approve resident requests, review formal entry requests with cell-level decisions, and submit your own request to the Master Admin.')
 
-        # 7. ADMIN PORTAL TAB (With Cell-Level Radio Button Reviews: Green=Accept, Red=Reject, Gray=Hold)
+        # 7. ADMIN PORTAL TAB
         with tab_admin:
             st.markdown('### 🔐 Administrator Portal')
             
@@ -936,7 +1006,8 @@ else:
                 st.error('❌ Invalid passcode for the selected role.')
 
             if is_admin_logged:
-                st.success(f'🔓 Authenticated successfully as **{admin_block}**!')
+                ap_info = ADMIN_PROFILES.get(admin_block, {})
+                st.success(f"🔓 Authenticated as **{ap_info.get('Full Name')}** ({ap_info.get('Designation')} — ID: `{ap_info.get('User ID')}`)!")
 
                 # --- ADMIN BUSY STATUS TOGGLE ---
                 current_busy_state = is_admin_busy(admin_block)
@@ -970,7 +1041,7 @@ else:
                                 )
                                 conn.execute(
                                     text('INSERT INTO togethespace_v4_password_logs (changed_by, target_userid, action_type, details) VALUES (:by, :target, :action, :details)'),
-                                    {'by': f'{admin_block} Admin (Busy Mode)', 'target': p_req['target_userid'], 'action': 'Bulk Auto-Accepted Password Request', 'details': f'Auto-approved pending request #{p_req["id"]} because admin marked themselves busy.'}
+                                    {'by': f"{ap_info.get('Full Name')} ({ap_info.get('Designation')})", 'target': p_req['target_userid'], 'action': 'Bulk Auto-Accepted Password Request', 'details': f'Auto-approved pending request #{p_req["id"]} because admin marked themselves busy.'}
                                 )
                         st.success(f"Status updated to Busy! All pending requests have been automatically approved.")
                     else:
@@ -1008,7 +1079,7 @@ else:
                                 with engine.begin() as conn:
                                     conn.execute(
                                         text('INSERT INTO togethespace_v4_records (title, category, content, author, likes, "Block", "Visibility", "Broadcast_Status") VALUES (:title, :category, :content, :author, 0, :block, :visibility, :status)'),
-                                        {'title': n_title, 'category': n_category, 'content': n_content, 'author': f'{admin_block} Admin', 'block': post_org, 'visibility': 'Block-Only', 'status': 'None'}
+                                        {'title': n_title, 'category': n_category, 'content': n_content, 'author': f"{ap_info.get('Full Name')} ({ap_info.get('Designation')})", 'block': post_org, 'visibility': 'Block-Only', 'status': 'None'}
                                     )
                                 st.success('Official notice published for your block!')
                                 st.rerun()
@@ -1057,7 +1128,7 @@ else:
                         except Exception as e:
                             st.warning(f'Error loading broadcast requests: {e}')
                     else:
-                        st.info(f'🏢 Block Admin ({admin_block}): Select one of your block posts below to request Master Admin approval for global cross-block viewing.')
+                        st.info(f'🏢 Block Admin ({ap_info.get("Full Name")} - {admin_block}): Select one of your block posts below to request Master Admin approval for global cross-block viewing.')
                         try:
                             with engine.connect() as conn:
                                 block_posts = pd.read_sql(text('SELECT id, title, category, "Visibility", "Broadcast_Status" FROM togethespace_v4_records WHERE "Block" = :block ORDER BY created_at DESC;'), con=conn, params={'block': admin_block})
@@ -1113,7 +1184,7 @@ else:
                     except Exception as e:
                         st.warning(f'Error loading unapproved social links: {e}')
 
-                # 4. REVIEW ENTRY REQUESTS (Cell-Level Decision Format: Green=Accept, Red=Reject, Gray=Hold)
+                # 4. REVIEW ENTRY REQUESTS (Cell-Level Decision Format)
                 elif admin_action == '📋 Review Entry Requests (Cell-Level Decision Format)':
                     st.markdown('#### 📋 Pending Entry / Modification Form Requests & Cell-Level Validation')
                     try:
@@ -1168,9 +1239,7 @@ else:
                                             new_status = 'Pending'
                                             if overall_action == 'Approve & Commit Changes':
                                                 new_status = 'Approved'
-                                                # If approved, commit payload to directory
                                                 if freq['request_type'] in ['Addition', 'Modification', 'Alteration']:
-                                                    # Check if user exists
                                                     exists_res = conn.execute(text('SELECT id FROM togethespace_v4_directory WHERE "User ID" = :uid'), {'uid': freq['applicant_userid']}).fetchone()
                                                     if exists_res:
                                                         conn.execute(
@@ -1387,9 +1456,9 @@ else:
                                                 conn.execute(
                                                     text('INSERT INTO togethespace_v4_password_requests (requested_by, target_userid, target_name, block, new_password, status) VALUES (:by, :target, :name, :block, :pwd, :status)'),
                                                     {
-                                                        'by': 'Master Admin',
+                                                        'by': f"{ap_info.get('Full Name')} ({ap_info.get('Designation')})",
                                                         'target': 'master_admin',
-                                                        'name': 'Master Administrator',
+                                                        'name': ap_info.get('Full Name'),
                                                         'block': 'All Blocks',
                                                         'pwd': hashed_m_req,
                                                         'status': req_status
@@ -1398,10 +1467,10 @@ else:
                                                 conn.execute(
                                                     text('INSERT INTO togethespace_v4_password_logs (changed_by, target_userid, action_type, details) VALUES (:by, :target, :action, :details)'),
                                                     {
-                                                        'by': 'Master Admin',
+                                                        'by': f"{ap_info.get('Full Name')} ({ap_info.get('Designation')})",
                                                         'target': 'master_admin',
                                                         'action': 'Master Self-Request',
-                                                        'details': f'Master Admin submitted self-request (Auto-approved: {master_is_busy}).'
+                                                        'details': f'Master Admin ({ap_info.get("Full Name")}) submitted self-request (Auto-approved: {master_is_busy}).'
                                                     }
                                                 )
                                             if master_is_busy:
@@ -1414,7 +1483,7 @@ else:
                         st.markdown('#### Pending Requests from Block Admins & Master Self-Requests')
                         try:
                             with engine.connect() as conn:
-                                master_req_df = pd.read_sql(text('SELECT * FROM togethespace_v4_password_requests WHERE status = \'Pending\' AND (requested_by LIKE \'Block Admin:%\' OR requested_by = \'Master Admin\') ORDER BY created_at DESC;'), con=conn)
+                                master_req_df = pd.read_sql(text('SELECT * FROM togethespace_v4_password_requests WHERE status = \'Pending\' AND (requested_by LIKE \'Block Admin:%\' OR requested_by LIKE \'Vikramaditya Roy%\' OR requested_by = \'Master Admin\') ORDER BY created_at DESC;'), con=conn)
                             
                             if master_req_df.empty:
                                 st.info('No pending requests from block admins or master admin.')
@@ -1436,7 +1505,7 @@ else:
                                                 )
                                                 conn.execute(
                                                     text('INSERT INTO togethespace_v4_password_logs (changed_by, target_userid, action_type, details) VALUES (:by, :target, :action, :details)'),
-                                                    {'by': 'Master Admin', 'target': req['target_userid'], 'action': 'Approved Block Admin Request', 'details': f'Master Admin approved request #{req["id"]} for {req["target_name"]}.'}
+                                                    {'by': f"{ap_info.get('Full Name')} ({ap_info.get('Designation')})", 'target': req['target_userid'], 'action': 'Approved Block Admin Request', 'details': f"Master Admin ({ap_info.get('Full Name')}) approved request #{req['id']} for {req['target_name']}."}
                                                 )
                                             st.success(f'Request #{req["id"]} approved successfully!')
                                             st.rerun()
@@ -1453,7 +1522,7 @@ else:
                             st.warning(f'Error loading master admin requests: {e}')
 
                     else:
-                        st.markdown(f'### 🏢 Block Admin ({admin_block}): Resident Requests & Send Request to Master Admin')
+                        st.markdown(f'### 🏢 Block Admin ({ap_info.get("Full Name")} — {admin_block}): Resident Requests & Send Request to Master Admin')
                         
                         st.markdown('#### Pending Resident Password Requests (Approve/Reject)')
                         try:
@@ -1484,7 +1553,7 @@ else:
                                                 )
                                                 conn.execute(
                                                     text('INSERT INTO togethespace_v4_password_logs (changed_by, target_userid, action_type, details) VALUES (:by, :target, :action, :details)'),
-                                                    {'by': f'Block Admin ({admin_block})', 'target': req['target_userid'], 'action': 'Approved Resident Password Request', 'details': f'Block Admin approved password request for {req["target_name"]}.'}
+                                                    {'by': f"{ap_info.get('Full Name')} ({ap_info.get('Designation')})", 'target': req['target_userid'], 'action': 'Approved Resident Password Request', 'details': f"Block Admin ({ap_info.get('Full Name')}) approved password request for {req['target_name']}."}
                                                 )
                                             st.success(f'Resident request #{req["id"]} approved and password updated!')
                                             st.rerun()
@@ -1523,9 +1592,9 @@ else:
                                             conn.execute(
                                                 text('INSERT INTO togethespace_v4_password_requests (requested_by, target_userid, target_name, block, new_password, status) VALUES (:by, :target, :name, :block, :pwd, :status)'),
                                                 {
-                                                    'by': f'Block Admin: {admin_block}',
-                                                    'target': admin_block.lower().replace(' ', '_'),
-                                                    'name': f'{admin_block} Administrator',
+                                                    'by': f"Block Admin: {ap_info.get('Full Name')} ({admin_block})",
+                                                    'target': ap_info.get('User ID'),
+                                                    'name': ap_info.get('Full Name'),
                                                     'block': admin_block,
                                                     'pwd': hashed_ba_p,
                                                     'status': req_status
@@ -1534,10 +1603,10 @@ else:
                                             conn.execute(
                                                 text('INSERT INTO togethespace_v4_password_logs (changed_by, target_userid, action_type, details) VALUES (:by, :target, :action, :details)'),
                                                 {
-                                                    'by': f'{admin_block} Admin',
-                                                    'target': admin_block.lower().replace(' ', '_'),
+                                                    'by': f"{ap_info.get('Full Name')} ({ap_info.get('Designation')})",
+                                                    'target': ap_info.get('User ID'),
                                                     'action': 'Sent Password Request to Master Admin',
-                                                    'details': f'Block Admin for {admin_block} submitted password request (Auto-accepted: {master_is_busy}).'
+                                                    'details': f"Block Admin ({ap_info.get('Full Name')}) submitted password request (Auto-accepted: {master_is_busy})."
                                                 }
                                             )
                                         if master_is_busy:
@@ -1584,10 +1653,10 @@ else:
                                                     conn.execute(
                                                         text('INSERT INTO togethespace_v4_password_logs (changed_by, target_userid, action_type, details) VALUES (:by, :target, :action, :details)'),
                                                         {
-                                                            'by': 'Master Admin',
+                                                            'by': f"{ap_info.get('Full Name')} ({ap_info.get('Designation')})",
                                                             'target': str(target_db_id),
                                                             'action': 'Direct Password Override',
-                                                            'details': f'Master Admin directly changed password for user record ID {target_db_id} without request.'
+                                                            'details': f"Master Admin ({ap_info.get('Full Name')}) directly changed password for user record ID {target_db_id} without request."
                                                         }
                                                     )
                                                 st.success(f'Password successfully overridden and updated for user ID {target_db_id} without request!')
