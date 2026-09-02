@@ -97,7 +97,6 @@ else:
         
         with engine.connect() as conn:
             conn.execute(text('SELECT 1;'))
-            # Ensure admin busy status table exists
             conn.execute(text("""
                 CREATE TABLE IF NOT EXISTS togethespace_v4_admin_status (
                     block VARCHAR(50) PRIMARY KEY,
@@ -390,6 +389,7 @@ else:
                     new_content = st.text_area('Content / Details')
                     
                     st.markdown('#### 📎 Media Attachments')
+                    st.info('ℹ️ **URL Guide:** Provide a direct public link (e.g., Supabase Storage Public URL or GitHub Raw link) ending in supported extensions: 🖼️ Images (`.jpg`, `.png`, `.webp`, `.gif`) | 🎵 Audio (`.mp3`, `.wav`) | 🎬 Video (`.mp4`, `.webm`, `.mov`).')
                     media_type = st.selectbox('Media Type', ['None', 'Image', 'Audio', 'Video'])
                     media_url = st.text_input('Media URL (Direct link to image, audio, or video file)')
                     
@@ -504,6 +504,7 @@ else:
                 chat_msg = st.text_area('Message')
                 
                 st.markdown('#### 📎 Chat Media Attachment')
+                st.caption('Provide a direct public link (e.g., Supabase Storage Public URL) ending in supported extensions: 🖼️ Images (.jpg, .png) | 🎵 Audio (.mp3, .wav) | 🎬 Video (.mp4, .webm).')
                 chat_media_type = st.selectbox('Media Type', ['None', 'Image', 'Audio', 'Video'], key='chat_media_type')
                 chat_media_url = st.text_input('Media URL (Direct link)', key='chat_media_url')
 
@@ -716,7 +717,6 @@ else:
                             {'b': admin_block, 'busy': new_busy_state}
                         )
                     if new_busy_state:
-                        # Auto-approve any currently pending requests for this scope
                         if admin_block == 'Master Admin':
                             pending_to_auto = pd.read_sql(text("SELECT * FROM togethespace_v4_password_requests WHERE status = 'Pending' AND (requested_by LIKE 'Block Admin:%' OR requested_by = 'Master Admin')"), con=engine)
                         else:
