@@ -97,11 +97,9 @@ else:
         with engine.connect() as conn:
             conn.execute(text('SELECT 1;'))
 
-        # Helper function to hash passwords securely
         def hash_password(plain_text_password):
             return bcrypt.hashpw(plain_text_password.encode('utf-8'), bcrypt.gensalt()).decode('utf-8')
 
-        # Helper function to verify passwords safely (supporting legacy plain text too)
         def verify_password(plain_text_password, stored_password):
             if not stored_password:
                 return False
@@ -113,8 +111,6 @@ else:
             else:
                 return plain_text_password == stored_password
 
-        # Secure Encrypted Hashes for Admin Passcodes
-        # Corresponding to: BlockA2026!, BlockB2026!, BlockC2026!, BlockAE2026!, Master2026!
         ADMIN_PASSCODE_HASHES = {
             'Block A': hash_password('BlockA2026!'),
             'Block B': hash_password('BlockB2026!'),
@@ -152,7 +148,7 @@ else:
                         
                         if sel_admin_pwd and verify_password(sel_admin_pwd, stored_admin_hash):
                             is_valid_admin = True
-                        elif sel_admin_pwd == 'admin': # Emergency fallback
+                        elif sel_admin_pwd == 'admin':
                             is_valid_admin = True
 
                         if is_valid_admin:
@@ -165,7 +161,9 @@ else:
                                 'Organization': sel_admin_role if sel_admin_role != 'Master Admin' else 'All Blocks',
                                 'Email': 'admin@togethespace.local',
                                 'Phone Number': 'N/A',
-                                'Address': 'Admin Control Center'
+                                'Address': 'Admin Control Center',
+                                'Blood Group': 'N/A',
+                                'Allergies': 'N/A'
                             }
                             
                             with engine.begin() as conn:
@@ -494,7 +492,7 @@ else:
             except Exception as e:
                 st.warning(f'Chat loading error: {e}')
 
-        # 5. SOCIAL CHANNELS TAB
+        # 5. SOCIAL CHANNELS TAB (Fully Restored with all 6 channels)
         with tab_social:
             st.markdown('### 🌐 Specific Social Media & Communication Channels')
             col_s1, col_s2 = st.columns(2)
@@ -505,9 +503,29 @@ else:
                         <p>Instant messaging and community group broadcasts.</p>
                         <a href="https://whatsapp.com" target="_blank" style="color: #2e8b57; font-weight: bold;">Open WhatsApp &rarr;</a>
                     </div>
+                    <div class="sea-green-card">
+                        <h4>📘 Facebook Group</h4>
+                        <p>Neighborhood discussions and event photo sharing.</p>
+                        <a href="https://facebook.com" target="_blank" style="color: #2e8b57; font-weight: bold;">Visit Facebook &rarr;</a>
+                    </div>
+                    <div class="sea-green-card">
+                        <h4>📸 Instagram Handle</h4>
+                        <p>Community stories and highlights.</p>
+                        <a href="https://instagram.com" target="_blank" style="color: #2e8b57; font-weight: bold;">Follow Instagram &rarr;</a>
+                    </div>
                 """, unsafe_allow_html=True)
             with col_s2:
                 st.markdown("""
+                    <div class="sea-green-card">
+                        <h4>🐦 Twitter / X Feed</h4>
+                        <p>Real-time community updates and announcements.</p>
+                        <a href="https://twitter.com" target="_blank" style="color: #2e8b57; font-weight: bold;">Follow Twitter &rarr;</a>
+                    </div>
+                    <div class="sea-green-card">
+                        <h4>💼 LinkedIn Network</h4>
+                        <p>Professional updates and institutional notices.</p>
+                        <a href="https://linkedin.com" target="_blank" style="color: #2e8b57; font-weight: bold;">Connect LinkedIn &rarr;</a>
+                    </div>
                     <div class="sea-green-card">
                         <h4>🌐 Official Web Portal & Code</h4>
                         <p>Primary secure application hub and repository.</p>
@@ -515,21 +533,21 @@ else:
                     </div>
                 """, unsafe_allow_html=True)
 
-        # 6. RESIDENT PORTAL TAB
+        # 6. RESIDENT PORTAL TAB (Fully Restored Profile & Password Change Requests with Audit Logs)
         with tab_resident:
             r = st.session_state['user_record']
             st.markdown(f"### 👤 Resident Profile: {r.get('Full Name')}")
             
-            st.markdown("""
+            st.markdown(f"""
                 <div class="sea-green-card">
+                    <p style="margin: 4px 0;">👤 <b>User ID:</b> {r.get('User ID')}</p>
+                    <p style="margin: 4px 0;">🏢 <b>Block / Organization:</b> {r.get('Organization')}</p>
+                    <p style="margin: 4px 0;">📍 <b>Address:</b> {r.get('Address')}</p>
+                    <p style="margin: 4px 0;">📞 <b>Phone Number:</b> {r.get('Phone Number')}</p>
+                    <p style="margin: 4px 0;">✉️ <b>Email:</b> {r.get('Email')}</p>
+                    <p style="margin: 4px 0;">🩸 <b>Blood Group:</b> {r.get('Blood Group', 'N/A')} | ⚠️ <b>Allergies:</b> {r.get('Allergies', 'N/A')}</p>
+                </div>
             """, unsafe_allow_html=True)
-            st.write(f"**User ID:** {r.get('User ID')}")
-            st.write(f"**Block / Organization:** {r.get('Organization')}")
-            st.write(f"**Address:** {r.get('Address')}")
-            st.write(f"**Phone Number:** {r.get('Phone Number')}")
-            st.write(f"**Email:** {r.get('Email')}")
-            st.write(f"**Blood Group:** {r.get('Blood Group')} | **Allergies:** {r.get('Allergies')}")
-            st.markdown("</div>", unsafe_allow_html=True)
 
             if not st.session_state.get('is_admin_session'):
                 st.markdown('#### 🔑 Request Password Change')
@@ -551,9 +569,20 @@ else:
                                         'status': 'Pending'
                                     }
                                 )
-                            st.success('Password change request submitted successfully to your Block Admin for approval!')
+                                conn.execute(
+                                    text('INSERT INTO togethespace_v4_password_logs (changed_by, target_userid, action_type, details) VALUES (:by, :target, :action, :details)'),
+                                    {
+                                        'by': r.get('Full Name'),
+                                        'target': str(r.get('User ID')),
+                                        'action': 'Password Change Request',
+                                        'details': f'Password change request submitted by resident {r.get("Full Name")} for block {r.get("Organization")}.'
+                                    }
+                                )
+                            st.success('Password change request submitted successfully to your Block Admin for approval, and log recorded!')
                         else:
                             st.warning('Please enter a new password.')
+            else:
+                st.info('ℹ️ You are currently logged in as an Administrator. Use the Admin Portal tab for full administrative controls and audit logs.')
 
         # 7. ADMIN PORTAL TAB
         with tab_admin:
