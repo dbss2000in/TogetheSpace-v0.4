@@ -110,7 +110,6 @@ else:
                 </div>
             """, unsafe_allow_html=True)
 
-            # Fetch lightweight user list for searchable dropdown with typing hints
             try:
                 with engine.connect() as conn:
                     users_df = pd.read_sql(text('SELECT "User ID", "Full Name", "Organization" FROM togethespace_v4_directory WHERE "User ID" IS NOT NULL ORDER BY "Full Name" ASC;'), con=conn)
@@ -139,7 +138,6 @@ else:
                     elif not login_pwd:
                         st.warning('Please enter your password.')
                     else:
-                        # Extract User ID from selection string
                         extracted_uid = selected_user_str.split(' — ')[0].strip()
                         
                         with engine.connect() as conn:
@@ -151,7 +149,6 @@ else:
                             st.session_state['authenticated'] = True
                             st.session_state['user_record'] = user_record
                             
-                            # Log successful login to audit trail
                             with engine.begin() as conn:
                                 conn.execute(
                                     text('INSERT INTO togethespace_v4_password_logs (changed_by, target_userid, action_type, details) VALUES (:by, :target, :action, :details)'),
@@ -167,7 +164,7 @@ else:
                         else:
                             st.error('❌ Incorrect password or User ID. Please try again.')
 
-            st.stop() # Halts rendering of the rest of the app until authenticated
+            st.stop()
 
         # --- MAIN APPLICATION TABS (Unlocked after Login) ---
         col_top1, col_top2 = st.columns([6, 1])
@@ -482,7 +479,7 @@ else:
         # 7. BLOCK & MASTER ADMIN PORTAL TAB
         with tab_admin:
             st.markdown('### 🔐 Administrator Portal')
-            st.markdown('Authenticate with block credentials or Master Admin passcode to manage records, approve password requests, and review audit logs.')
+            st.markdown('Authenticate with block credentials or Master Admin passcode to manage records, approve password requests, review audit logs, and export credentials.')
             
             col_adm1, col_adm2 = st.columns(2)
             with col_adm1:
@@ -517,7 +514,8 @@ else:
                     '✏️ Edit Member',
                     '❌ Delete Member',
                     '🔑 Password Requests & Management',
-                    '📋 Audit Logs'
+                    '📋 Audit Logs',
+                    '📥 Export Credentials CSV'
                 ], horizontal=True)
 
                 st.markdown('---')
@@ -789,6 +787,32 @@ else:
                             st.dataframe(logs_df, use_container_width=True)
                     except Exception as e:
                         st.info('Audit log table will populate once logins or password changes are processed.')
+
+                # 8. EXPORT CREDENTIALS CSV
+                elif admin_action == '📥 Export Credentials CSV':
+                    st.markdown('#### 📥 Download Credentials CSV')
+                    st.markdown('Export user IDs and passwords for all members in your authorized scope.')
+                    
+                    try:
+                        with engine.connect() as conn:
+                            if admin_block == 'Master Admin':
+                                df_cred = pd.read_sql(text('SELECT "Organization", "Full Name", "User ID", "Password" FROM togethespace_v4_directory ORDER BY "Organization", "Full Name";'), con=conn)
+                            else:
+                                df_cred = pd.read_sql(text('SELECT "Organization", "Full Name", "User ID", "Password" FROM togethespace_v4_directory WHERE "Organization" = :block ORDER BY "Full Name";'), con=conn, params={'block': admin_block})
+                        
+                        if df_cred.empty:
+                            st.warning('No credential records found.')
+                        else:
+                            csv_data = df_cred.to_csv(index=False).encode('utf-8')
+                            st.download_button(
+                                label=f"📥 Download {admin_block} Credentials CSV",
+                                data=csv_data,
+                                file_name=f"togethespace_credentials_{admin_block.lower().replace(' ', '_')}.csv",
+                                mime="text/csv",
+                                use_container_width=True
+                            )
+                    except Exception as e:
+                        st.warning(f'Could not generate credential export: {e}')
 
     except Exception as e:
         st.error(f'Database connection or query failed: {e}')
