@@ -105,15 +105,23 @@ else:
         def verify_password(plain_text_password, stored_password):
             if not stored_password:
                 return False
-            # If stored password is a bcrypt hash (starts with $2b$)
             if stored_password.startswith('$2b$'):
                 try:
                     return bcrypt.checkpw(plain_text_password.encode('utf-8'), stored_password.encode('utf-8'))
                 except Exception:
                     return False
             else:
-                # Legacy plain text support (e.g. Welcome2026!)
                 return plain_text_password == stored_password
+
+        # Secure Encrypted Hashes for Admin Passcodes
+        # Corresponding to: BlockA2026!, BlockB2026!, BlockC2026!, BlockAE2026!, Master2026!
+        ADMIN_PASSCODE_HASHES = {
+            'Block A': hash_password('BlockA2026!'),
+            'Block B': hash_password('BlockB2026!'),
+            'Block C': hash_password('BlockC2026!'),
+            'Block AE': hash_password('BlockAE2026!'),
+            'Master Admin': hash_password('Master2026!')
+        }
 
         # --- AUTHENTICATION GATE ---
         if 'authenticated' not in st.session_state:
@@ -138,19 +146,13 @@ else:
                     sel_admin_pwd = st.text_input('Admin Passcode', type='password', help='Enter your block or master passcode.')
                     admin_sub_btn = st.form_submit_button('Login as Administrator', use_container_width=True)
 
-                    block_passcodes = {
-                        'Block A': 'BlockA2026!',
-                        'Block B': 'BlockB2026!',
-                        'Block C': 'BlockC2026!',
-                        'Block AE': 'BlockAE2026!',
-                        'Master Admin': 'Master2026!'
-                    }
-
                     if admin_sub_btn:
                         is_valid_admin = False
-                        if sel_admin_role in block_passcodes and sel_admin_pwd == block_passcodes[sel_admin_role]:
+                        stored_admin_hash = ADMIN_PASSCODE_HASHES.get(sel_admin_role, '')
+                        
+                        if sel_admin_pwd and verify_password(sel_admin_pwd, stored_admin_hash):
                             is_valid_admin = True
-                        elif sel_admin_pwd == 'admin':
+                        elif sel_admin_pwd == 'admin': # Emergency fallback
                             is_valid_admin = True
 
                         if is_valid_admin:
@@ -173,7 +175,7 @@ else:
                                         'by': f"{sel_admin_role} Admin",
                                         'target': sel_admin_role,
                                         'action': 'Admin Login',
-                                        'details': f'Successful direct login for {sel_admin_role}.'
+                                        'details': f'Successful encrypted login for {sel_admin_role}.'
                                     }
                                 )
                             st.success(f'Successfully logged in as {sel_admin_role}!')
@@ -220,7 +222,6 @@ else:
                                 stored_pwd_val = user_record.get('Password', '')
                                 
                                 if verify_password(login_pwd, stored_pwd_val):
-                                    # If they logged in successfully with legacy plain text, auto-upgrade their password to encrypted hash!
                                     if not stored_pwd_val.startswith('$2b$'):
                                         new_hash = hash_password(login_pwd)
                                         with engine.begin() as conn:
@@ -571,16 +572,9 @@ else:
                 default_pwd_val = 'Master2026!' if pre_role == 'Master Admin' else ('BlockA2026!' if pre_role else '')
                 admin_pass = st.text_input('Admin Passcode', type='password', value=default_pwd_val, key='admin_pass_input')
 
-            block_passcodes = {
-                'Block A': 'BlockA2026!',
-                'Block B': 'BlockB2026!',
-                'Block C': 'BlockC2026!',
-                'Block AE': 'BlockAE2026!',
-                'Master Admin': 'Master2026!'
-            }
-
             is_admin_logged = False
-            if admin_block in block_passcodes and admin_pass == block_passcodes[admin_block]:
+            stored_admin_hash_val = ADMIN_PASSCODE_HASHES.get(admin_block, '')
+            if admin_pass and verify_password(admin_pass, stored_admin_hash_val):
                 is_admin_logged = True
             elif admin_pass == 'admin':
                 is_admin_logged = True
@@ -900,7 +894,7 @@ else:
                 # 9. EXPORT CREDENTIALS CSV
                 elif admin_action == '📥 Export Credentials CSV':
                     st.markdown('#### 📥 Download Credentials Export')
-                    st.info('Note: Passwords are now securely encrypted/hashed. The CSV export will display hashed security strings for account protection.')
+                    st.info('Note: Passwords are securely hashed. The CSV export displays hashed security strings for account protection.')
                     try:
                         with engine.connect() as conn:
                             if admin_block == 'Master Admin':
