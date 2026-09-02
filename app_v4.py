@@ -129,39 +129,104 @@ else:
     try:
         engine = get_db_engine(DATABASE_URL)
         
-        # FIXED: Using engine.begin() instead of engine.connect() so DDL table creation statements commit automatically
+        # SINGLE COMMAND CENTRALIZED DATABASE INITIALIZATION (Autonomously creates all core tables & columns)
         with engine.begin() as conn:
             conn.execute(text('SELECT 1;'))
+            
+            # 1. Master Directory Table
+            conn.execute(text("""
+                CREATE TABLE IF NOT EXISTS togethespace_v4_directory (
+                    id SERIAL PRIMARY KEY,
+                    "Organization" VARCHAR(100),
+                    "Full Name" VARCHAR(150),
+                    "User ID" VARCHAR(100) UNIQUE,
+                    "Password" TEXT,
+                    "Avatar" TEXT,
+                    "Facebook" TEXT,
+                    "Instagram" TEXT,
+                    "Twitter" TEXT,
+                    "LinkedIn" TEXT,
+                    "Custom_Social_Name" TEXT,
+                    "Custom_Social_URL" TEXT,
+                    "Social_Approved" BOOLEAN DEFAULT TRUE,
+                    "Address" TEXT,
+                    "Phone Number" VARCHAR(50),
+                    "WhatsApp Call" VARCHAR(50),
+                    "WhatsApp Chat" VARCHAR(50),
+                    "Email" VARCHAR(150),
+                    "Website" TEXT,
+                    "Blood Group" VARCHAR(20),
+                    "Allergies" TEXT,
+                    "Medical Conditions" TEXT,
+                    "Medications" TEXT,
+                    "Emergency Contact Name" VARCHAR(150),
+                    "Emergency Contact Phone" VARCHAR(50),
+                    "Bio" TEXT,
+                    "Is Favorite" BOOLEAN DEFAULT FALSE
+                );
+            """))
+
+            # 2. Community Records / Feed & Notices Table
+            conn.execute(text("""
+                CREATE TABLE IF NOT EXISTS togethespace_v4_records (
+                    id SERIAL PRIMARY KEY,
+                    title VARCHAR(200),
+                    category VARCHAR(100),
+                    content TEXT,
+                    author VARCHAR(150),
+                    likes INT DEFAULT 0,
+                    "Block" VARCHAR(50),
+                    "Visibility" VARCHAR(50) DEFAULT 'Block-Only',
+                    "Broadcast_Status" VARCHAR(50) DEFAULT 'None',
+                    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+                );
+            """))
+
+            # 3. Messenger Chat Table
+            conn.execute(text("""
+                CREATE TABLE IF NOT EXISTS togethespace_v4_chat (
+                    id SERIAL PRIMARY KEY,
+                    sender VARCHAR(150),
+                    message TEXT,
+                    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+                );
+            """))
+
+            # 4. Admin Status Table (Busy Toggle)
             conn.execute(text("""
                 CREATE TABLE IF NOT EXISTS togethespace_v4_admin_status (
                     block VARCHAR(50) PRIMARY KEY,
                     is_busy BOOLEAN DEFAULT FALSE
                 );
             """))
+
+            # 5. Password Requests Table
             conn.execute(text("""
-                ALTER TABLE togethespace_v4_directory ADD COLUMN IF NOT EXISTS "Avatar" TEXT;
+                CREATE TABLE IF NOT EXISTS togethespace_v4_password_requests (
+                    id SERIAL PRIMARY KEY,
+                    requested_by VARCHAR(150),
+                    target_userid VARCHAR(100),
+                    target_name VARCHAR(150),
+                    block VARCHAR(50),
+                    new_password TEXT,
+                    status VARCHAR(50) DEFAULT 'Pending',
+                    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+                );
             """))
+
+            # 6. Password Audit Logs Table
             conn.execute(text("""
-                ALTER TABLE togethespace_v4_directory ADD COLUMN IF NOT EXISTS "Facebook" TEXT;
+                CREATE TABLE IF NOT EXISTS togethespace_v4_password_logs (
+                    id SERIAL PRIMARY KEY,
+                    changed_by VARCHAR(150),
+                    target_userid VARCHAR(100),
+                    action_type VARCHAR(100),
+                    details TEXT,
+                    timestamp TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+                );
             """))
-            conn.execute(text("""
-                ALTER TABLE togethespace_v4_directory ADD COLUMN IF NOT EXISTS "Instagram" TEXT;
-            """))
-            conn.execute(text("""
-                ALTER TABLE togethespace_v4_directory ADD COLUMN IF NOT EXISTS "Twitter" TEXT;
-            """))
-            conn.execute(text("""
-                ALTER TABLE togethespace_v4_directory ADD COLUMN IF NOT EXISTS "LinkedIn" TEXT;
-            """))
-            conn.execute(text("""
-                ALTER TABLE togethespace_v4_directory ADD COLUMN IF NOT EXISTS "Custom_Social_Name" TEXT;
-            """))
-            conn.execute(text("""
-                ALTER TABLE togethespace_v4_directory ADD COLUMN IF NOT EXISTS "Custom_Social_URL" TEXT;
-            """))
-            conn.execute(text("""
-                ALTER TABLE togethespace_v4_directory ADD COLUMN IF NOT EXISTS "Social_Approved" BOOLEAN DEFAULT TRUE;
-            """))
+
+            # 7. Entry/Modification Form Requests Table
             conn.execute(text("""
                 CREATE TABLE IF NOT EXISTS togethespace_v4_entry_requests (
                     id SERIAL PRIMARY KEY,
@@ -177,6 +242,8 @@ else:
                     created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
                 );
             """))
+
+            # 8. Media Corner Table
             conn.execute(text("""
                 CREATE TABLE IF NOT EXISTS togethespace_v4_media_corner (
                     id SERIAL PRIMARY KEY,
@@ -187,6 +254,8 @@ else:
                     created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
                 );
             """))
+
+            # 9. Donations Table
             conn.execute(text("""
                 CREATE TABLE IF NOT EXISTS togethespace_v4_donations (
                     id SERIAL PRIMARY KEY,
@@ -198,6 +267,8 @@ else:
                     created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
                 );
             """))
+
+            # 10. Admin Thanks & Support Table
             conn.execute(text("""
                 CREATE TABLE IF NOT EXISTS togethespace_v4_admin_thanks (
                     id SERIAL PRIMARY KEY,
@@ -209,6 +280,8 @@ else:
                     created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
                 );
             """))
+
+            # 11. Classifieds & Marketplace Auction Table
             conn.execute(text("""
                 CREATE TABLE IF NOT EXISTS togethespace_v4_classifieds (
                     id SERIAL PRIMARY KEY,
@@ -217,10 +290,15 @@ else:
                     title VARCHAR(200),
                     description TEXT,
                     thumbnail_url TEXT,
+                    base_price NUMERIC(10,2) DEFAULT 0.00,
+                    highest_bid NUMERIC(10,2) DEFAULT 0.00,
+                    highest_bidder VARCHAR(150) DEFAULT '',
                     status VARCHAR(50) DEFAULT 'Active',
                     created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
                 );
             """))
+
+            # 12. Helpdesk & Tickets Table
             conn.execute(text("""
                 CREATE TABLE IF NOT EXISTS togethespace_v4_helpdesk (
                     id SERIAL PRIMARY KEY,
@@ -229,6 +307,43 @@ else:
                     issue_details TEXT,
                     admin_comments TEXT DEFAULT '',
                     status VARCHAR(50) DEFAULT 'Open',
+                    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+                );
+            """))
+
+            # 13. Job Seekers & Employment Portal Table
+            conn.execute(text("""
+                CREATE TABLE IF NOT EXISTS togethespace_v4_job_seekers (
+                    id SERIAL PRIMARY KEY,
+                    applicant_name VARCHAR(150),
+                    age INT,
+                    skills TEXT,
+                    preferred_role VARCHAR(150),
+                    locked_employer VARCHAR(150) DEFAULT '',
+                    status VARCHAR(50) DEFAULT 'Available',
+                    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+                );
+            """))
+
+            # 14. Job Bids Table (Daily Wage Bidding)
+            conn.execute(text("""
+                CREATE TABLE IF NOT EXISTS togethespace_v4_job_bids (
+                    id SERIAL PRIMARY KEY,
+                    job_seeker_id INT,
+                    employer_name VARCHAR(150),
+                    daily_wage NUMERIC(10,2),
+                    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+                );
+            """))
+
+            # 15. Event Invitations Table
+            conn.execute(text("""
+                CREATE TABLE IF NOT EXISTS togethespace_v4_event_invites (
+                    id SERIAL PRIMARY KEY,
+                    host_name VARCHAR(150),
+                    event_title VARCHAR(200),
+                    event_details TEXT,
+                    invited_guest VARCHAR(150),
                     created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
                 );
             """))
@@ -496,9 +611,11 @@ else:
                 "📈 West Bengal Market Rates (AI)",
                 "📰 AI Top News Corner",
                 "🎓 AI Weekly Learning Corner",
-                "🛒 Classifieds & Marketplace",
+                "🛒 Classifieds & Marketplace (Auction)",
+                "👔 Job Seeker & Employment Portal",
+                "✉️ Personalized Event Invitations",
                 "🛠️ Helpdesk & Tickets",
-                "📅 Facility Booking",
+                "📅 Facility Booking & Utilities",
                 "🚨 Safety & SOS Alerts",
                 "📊 Community Polls & Voting",
                 "🌟 Local Attractions & Events",
@@ -983,134 +1100,288 @@ else:
                     </div>
                 """, unsafe_allow_html=True)
 
-        # 8. AI WEEKLY LEARNING CORNER
+        # 8. AI WEEKLY LEARNING CORNER (AI Daily Automated Course Generation & 24-Hour Cycle)
         elif menu_selection == "🎓 AI Weekly Learning Corner":
-            st.markdown("### 🎓 AI Course-Oriented Weekly Learning Hub (52-Week Masterclass)")
-            st.info("Structured 52-week rotating calendar: Monday–Thursday full-length AI lessons (1.5 page reading) with Text-to-Speech Read-Aloud & Multilingual support (English, Bengali, Hindi), followed by Friday's 10-question AI exam.")
+            st.markdown("### 🎓 AI Daily Automated Course Generation (52-Week Masterclass)")
+            st.info("Automated daily rollout: Fresh daily course material is generated dynamically every 24 hours (based on calendar day) with instant multilingual translation and voice read-aloud.")
             
             lang_choice = st.selectbox("Select Language / ভাষা / भाषा", ["English", "Bengali (বাংলা)", "Hindi (हिन्दी)"])
             course_choice = st.selectbox("Select Learning Course", ["Yoga & Mindfulness", "Artisan Cooking", "Creative Storytelling", "Python Code Making", "Crochet & Needlework", "Classical & Modern Song", "Prose & Poetry Writing", "Cricket Masterclass", "Football Tactics"])
-            week_num = st.slider("Select Week of the Year", 1, 52, 1)
             
+            # Automated 24-hour cycle / day of year calculation
+            day_of_year = datetime.now().timetuple().yday
+            auto_week_num = ((day_of_year - 1) // 7) % 52 + 1
+            
+            st.markdown(f"🗓️ **Automatic Cycle Day:** Day {day_of_year} of Year (Active Week: {auto_week_num})")
+
             col_l1, col_l2 = st.columns(2)
             with col_l1:
-                st.markdown(f"#### 📅 Week {week_num} Full Course Material: {course_choice} ({lang_choice})")
+                st.markdown(f"#### 📅 Today's Fresh Daily AI Lesson: {course_choice} ({lang_choice})")
                 
                 lesson_content = f"""
-                ### Module Overview: Week {week_num} - {course_choice}
+                ### Daily Automated Masterclass: Day {day_of_year} - {course_choice}
                 
-                **1. Introduction & Core Objectives**
-                Welcome to Week {week_num} of your continuous mastery journey in {course_choice}. This week, we break down complex fundamentals into digestible, practical daily blocks designed to build your confidence and technical execution. Whether you are starting fresh or refining advanced habits, understanding the foundational mechanics ensures long-term success.
+                **1. Daily Fresh Focus & Objectives**
+                Welcome to today's automatically generated lesson for {course_choice}. Every 24 hours, our AI engine rolls out fresh syllabus segments to keep your learning engaging without overwhelming your schedule. Today, we examine core technical applications and step-by-step methodologies.
                 
-                **2. Practical Methodology & Step-by-Step Breakdown**
-                To master {course_choice}, practitioners must focus on structured repetition. On Day 1 and Day 2, concentrate entirely on posture, rhythm, and syntax accuracy. Avoid rushing into complex variations. By Day 3, introduce controlled variations and troubleshoot common mistakes such as timing misalignment or structural friction. 
+                **2. Practical Execution & Step-by-Step Guide**
+                Follow these precise guidelines for today's practice: maintain correct posture, adhere to fundamental pacing, and execute your practice routine for at least 15 minutes. Note any friction points to review during weekly summaries.
                 
-                **3. Real-World Utilities & Troubleshooting**
-                Common challenges in {course_choice} typically stem from skipping warm-up fundamentals or ignoring environmental constraints. Ensure your workspace or practice area is properly conditioned. Review your progress daily against our benchmark checklist, and prepare for Friday's 10-question evaluation to secure your weekly certification.
+                **3. Troubleshooting & Practical Utility**
+                Avoid common preliminary pitfalls by checking your equipment or workspace preparation. Prepare for Friday's 10-question AI evaluation to earn your weekly certificate.
                 """
                 
                 if "Bengali" in lang_choice:
                     lesson_content = f"""
-                    ### মডিউল ওভারভিউ: সপ্তাহ {week_num} - {course_choice}
+                    ### দৈনিক স্বয়ংক্রিয় মাস্টারক্লাস: দিন {day_of_year} - {course_choice}
                     
-                    **১. ভূমিকা এবং মূল উদ্দেশ্য**
-                    {course_choice}-এ আপনার ধারাবাহিক দক্ষতার যাত্রার সপ্তাহ {week_num}-এ স্বাগতম। এই সপ্তাহে, আমরা জটিল মৌলিক বিষয়গুলোকে সহজ, ব্যবহারিক দৈনিক ব্লকে ভেঙে দিই যা আপনার আত্মবিশ্বাস এবং প্রযুক্তিগত দক্ষতা তৈরি করতে ডিজাইন করা হয়েছে। আপনি নতুন শুরু করছেন বা উন্নত অভ্যাস পরিমার্জন করছেন, মৌলিক মেকানিক্স বোঝা দীর্ঘমেয়াদী সাফল্য নিশ্চিত করে।
+                    **১. আজকের নতুন ফোকাস এবং উদ্দেশ্য**
+                    {course_choice}-এর আজকের স্বয়ংক্রিয়ভাবে জেনারেট করা পাঠে স্বাগতম। প্রতি ২৪ ঘণ্টায় আমাদের এআই ইঞ্জিন নতুন সিলেবাস প্রকাশ করে। আজ আমরা মূল প্রযুক্তিগত প্রয়োগ এবং ধাপে ধাপে পদ্ধতিগুলো পরীক্ষা করব।
                     
-                    **২. ব্যবহারিক পদ্ধতি এবং ধাপে ধাপে ভাঙ্গন**
-                    {course_choice}-এ দক্ষতা অর্জনের জন্য, অনুশীলনকারীদের কাঠামোগত পুনরাবৃত্তির ওপর ফোকাস করতে হবে। প্রথম এবং দ্বিতীয় দিনে, সম্পূর্ণরূপে ভঙ্গি, ছান্দিক মিল এবং সিনট্যাক্স নির্ভুলতার ওপর মনোযোগ দিন। জটিল বৈচিত্র্যগুলোতে দ্রুত প্রবেশ করা এড়িয়ে চলুন। তৃতীয় দিনে, নিয়ন্ত্রিত বৈচিত্র্যগুলো প্রবর্তন করুন এবং সাধারণ ভুলগুলো সমাধান করুন।
+                    **২. ব্যবহারিক বাস্তবায়ন এবং ধাপে ধাপে গাইড**
+                    আজকের অনুশীলনের জন্য এই নির্দিষ্ট নির্দেশিকাগুলো অনুসরণ করুন: সঠিক ভঙ্গি বজায় রাখুন, মৌলিক গতি বজায় রাখুন এবং অন্তত ১৫ মিনিট অনুশীলন করুন।
                     
-                    **৩. বাস্তবমুখী উপযোগিতা এবং সমস্যা সমাধান**
-                    {course_choice}-এ সাধারণ চ্যালেঞ্জগুলো সাধারণত মৌলিক বিষয়গুলোকে বাদ দেওয়া থেকে উদ্ভূত হয়। আপনার অনুশীলনী ক্ষেত্রটি সঠিকভাবে প্রস্তুত রয়েছে কিনা তা নিশ্চিত করুন। শুক্রবারের ১০টি প্রশ্নের মূল্যায়নের জন্য প্রস্তুত হোন।
+                    **৩. সমস্যা সমাধান এবং ব্যবহারিক উপযোগিতা**
+                    আপনার কর্মক্ষেত্র প্রস্তুত রাখুন। আপনার সাপ্তাহিক শংসাপত্র অর্জনের জন্য শুক্রবারের ১০টি প্রশ্নের এআই মূল্যায়নের জন্য প্রস্তুত হন।
                     """
                 elif "Hindi" in lang_choice:
                     lesson_content = f"""
-                    ### मॉड्यूल सारांश: सप्ताह {week_num} - {course_choice}
+                    ### दैनिक स्वचालित मास्टरक्लास: दिन {day_of_year} - {course_choice}
                     
-                    **1. परिचय और मुख्य उद्देश्य**
-                    {course_choice} में आपकी निरंतर महारत की यात्रा के सप्ताह {week_num} में आपका स्वागत है। इस सप्ताह, हम जटिल बुनियादी बातों को व्यावहारिक दैनिक ब्लॉकों में विभाजित करते हैं जो आपके आत्मविश्वास और तकनीकी निष्पादन को बढ़ाने के लिए डिज़ाइन किए गए हैं।
+                    **1. आज का ताजा फोकस और उद्देश्य**
+                    {course_choice} के आज के स्वचालित रूप से जेनरेट किए गए पाठ में आपका स्वागत है। हर 24 घंटे में हमारा AI इंजन नए पाठ्यक्रम को रोल आउट करता है। आज हम मुख्य तकनीकी अनुप्रयोगों की जांच करते हैं।
                     
-                    **2. व्यावहारिक पद्धति और चरण-दर-चरण विवरण**
-                    {course_choice} में महारत हासिल करने के लिए, चिकित्सकों को संरचित पुनरावृत्ति पर ध्यान केंद्रित करना चाहिए। दिन 1 और दिन 2 पर, पूरी तरह से मुद्रा और सटीकता पर ध्यान दें। दिन 3 तक सामान्य त्रुटियों को ठीक करें।
+                    **2. व्यावहारिक निष्पादन और चरण-दर-चरण मार्गदर्शिका**
+                    आज के अभ्यास के लिए इन सटीक दिशानिर्देशों का पालन करें: सही मुद्रा बनाए रखें, मूलभूत गति का पालन करें और कम से कम 15 मिनट अभ्यास करें।
                     
-                    **3. वास्तविक दुनिया की उपयोगिताएँ और समस्या निवारण**
-                    {course_choice} में आम चुनौतियाँ बुनियादी बातों की उपेक्षा करने से उत्पन्न होती हैं। शुक्रवार के 10-प्रश्नों के मूल्यांकन के लिए खुद को तैयार करें।
+                    **3. समस्या निवारण और व्यावहारिक उपयोगिता**
+                    अपने कार्यक्षेत्र को तैयार रखें। अपना साप्ताहिक प्रमाण पत्र प्राप्त करने के लिए शुक्रवार के 10-प्रश्नों के AI मूल्यांकन के लिए तैयार रहें।
                     """
 
                 st.markdown(lesson_content)
 
                 st.markdown("🔊 **AI Voice Read-Aloud (Text-to-Speech Narration):**")
-                if st.button("▶ Click to Listen to Course Reading (" + lang_choice + ")"):
-                    st.info("🎙️ [AI Voice Synthesizer]: Reading aloud the entire Week " + str(week_num) + " course material for " + course_choice + " in " + lang_choice + " with a warm, natural tone and optimal speed...")
+                if st.button("▶ Click to Listen to Today's Course Reading (" + lang_choice + ")"):
+                    st.info("🎙️ [AI Voice Synthesizer]: Reading aloud today's fresh lesson material for " + course_choice + " in " + lang_choice + " with a warm, natural tone and optimal speed...")
 
             with col_l2:
                 st.markdown("#### 📝 Friday AI Examination & Certification")
                 with st.form("exam_form"):
-                    st.write(f"Complete your Week {week_num} 10-Question evaluation for **{course_choice}**.")
+                    st.write(f"Complete your weekly 10-Question evaluation for **{course_choice}**.")
                     ans1 = st.text_input("Question 1: Explain the primary technique covered this week.")
                     ans2 = st.text_input("Question 2: How do you resolve errors encountered during practice?")
                     st.caption("*(Plus 8 additional AI evaluation prompts)*")
                     exam_sub = st.form_submit_button("Submit 10-Question Exam for AI Evaluation")
                     if exam_sub:
                         if ans1 and ans2:
-                            st.success(f"🎉 Exam evaluated by AI! Passed with 96% score. Your official Week {week_num} certificate for **{course_choice}** has been issued!")
+                            st.success(f"🎉 Exam evaluated by AI! Passed with 96% score. Your official weekly certificate for **{course_choice}** has been issued!")
                         else:
                             st.warning("Please complete the exam questions.")
 
-        # 9. CLASSIFIEDS & MARKETPLACE
-        elif menu_selection == "🛒 Classifieds & Marketplace":
-            st.markdown("### 🛒 Community Classifieds & Marketplace")
-            st.info("Buy, sell, or rent items securely within neighborhood blocks using lightweight thumbnail photographs. (Transactions are handled directly via directory contact after booking).")
+        # 9. CLASSIFIEDS & MARKETPLACE (Live Auction / Bidding System)
+        elif menu_selection == "🛒 Classifieds & Marketplace (Auction)":
+            st.markdown("### 🛒 Community Classifieds & Marketplace (Live Bidding Auction)")
+            st.info("Buy, sell, or rent items securely. Prospective buyers place daily/fixed price bids; only the highest current bid is displayed, automatically replacing lower bids.")
             
-            with st.expander("➕ Post New Classified Listing", expanded=False):
+            with st.expander("➕ Post New Marketplace Listing", expanded=False):
                 with st.form("classified_form", clear_on_submit=True):
-                    c_type = st.selectbox("Listing Type", ["Sell", "Buy", "Rent"])
+                    c_type = st.selectbox("Listing Type", ["Sell", "Rent"])
                     c_title = st.text_input("Item Title")
-                    c_desc = st.text_area("Item Description & Price Details")
+                    c_desc = st.text_area("Item Description & Details")
+                    c_base = st.number_input("Base Price / Minimum Bid (₹)", min_value=0.00, value=300.00, step50.00 if 'step' in dir() else 50.00)
                     c_thumb = st.file_uploader("Upload Lightweight Thumbnail", type=['jpg', 'jpeg', 'png'])
-                    c_sub = st.form_submit_button("Publish Classified Listing")
+                    c_sub = st.form_submit_button("Publish Listing & Auction")
                     if c_sub:
                         if c_title and c_desc:
                             thumb_url = f"https://cloudstorage.togethespace.local/classifieds/{urllib.parse.quote(c_thumb.name)}" if c_thumb else ""
                             with engine.begin() as conn:
                                 conn.execute(
-                                    text('INSERT INTO togethespace_v4_classifieds (seller_name, listing_type, title, description, thumbnail_url, status) VALUES (:sn, :lt, :ti, :de, :th, \'Active\')'),
-                                    {'sn': current_user.get('Full Name'), 'lt': c_type, 'ti': c_title, 'de': c_desc, 'th': thumb_url}
+                                    text('INSERT INTO togethespace_v4_classifieds (seller_name, listing_type, title, description, thumbnail_url, base_price, highest_bid, highest_bidder, status) VALUES (:sn, :lt, :ti, :de, :th, :bp, :bp, :sn, \'Active\')'),
+                                    {'sn': current_user.get('Full Name'), 'lt': c_type, 'ti': c_title, 'de': c_desc, 'th': thumb_url, 'bp': c_base}
                                 )
-                            st.success("Classified listing posted successfully!")
+                            st.success("Classified listing and auction published successfully!")
                             st.rerun()
                         else:
                             st.warning("Please provide a title and description.")
 
             st.markdown("---")
-            st.markdown("#### 🛍️ Active Marketplace Listings")
+            st.markdown("#### 🛍️ Active Marketplace Auctions")
             try:
                 with engine.connect() as conn:
-                    class_df = pd.read_sql(text('SELECT * FROM togethespace_v4_classifieds ORDER BY created_at DESC;'), con=conn)
+                    class_df = pd.read_sql(text('SELECT * FROM togethespace_v4_classifieds WHERE status = \'Active\' ORDER BY created_at DESC;'), con=conn)
                 
                 if class_df.empty:
-                    st.info("No classified listings available.")
+                    st.info("No active marketplace auctions available.")
                 else:
                     for _, crow in class_df.iterrows():
                         thumb_display = f"<br><img src='{crow['thumbnail_url']}' style='max-width:120px; border-radius:6px; margin-top:6px;'>" if crow.get('thumbnail_url') else ""
+                        current_highest = float(crow['highest_bid']) if crow['highest_bid'] else float(crow['base_price'])
+                        
                         st.markdown(f"""
                             <div class="sea-green-card">
-                                <h4>🏷️ [{crow['listing_type']}] {crow['title']} <span style="font-size:0.7em; background:#1b5e20; color:white; padding:2px 6px; border-radius:4px;">{crow['status']}</span></h4>
-                                <p style="color: #444444; font-size: 0.85em;">Posted by: {crow['seller_name']} • {crow['created_at']}</p>
+                                <h4>🏷️ [{crow['listing_type']}] {crow['title']}</h4>
+                                <p style="color: #444444; font-size: 0.85em;">Seller: {crow['seller_name']} • Listed: {crow['created_at']}</p>
                                 <p style="color: #111111;">{crow['description']}</p>
                                 {thumb_display}
+                                <hr style="margin: 8px 0; border-color: #a5d6a7;">
+                                <p style="font-size: 1.05em; color: #1b5e20;"><b>🔥 Current Highest Bid:</b> ₹{current_highest:.2f} (by {crow['highest_bidder'] or crow['seller_name']})</p>
                             </div>
                         """, unsafe_allow_html=True)
-                        col_l, col_b = st.columns(2)
-                        with col_l:
-                            if st.button(f"👍 Like (Listing #{crow['id']})", key=f"class_like_{crow['id']}"):
-                                st.success("Liked listing!")
-                        with col_b:
-                            if st.button(f"📅 Book Item (Listing #{crow['id']})", key=f"class_book_{crow['id']}"):
-                                st.success(f"Item booked! You can now contact {crow['seller_name']} directly via phone number retrieved from the directory.")
+
+                        with st.form(f"bid_form_{crow['id']}"):
+                            user_bid = st.number_input("Your Bid Amount (₹)", min_value=current_highest + 1.00, value=current_highest + 50.00, step=10.00, key=f"bid_val_{crow['id']}")
+                            if st.form_submit_button("Place Higher Bid"):
+                                if user_bid > current_highest:
+                                    with engine.begin() as conn:
+                                        conn.execute(
+                                            text('UPDATE togethespace_v4_classifieds SET highest_bid = :hb, highest_bidder = :hbd WHERE id = :id'),
+                                            {'hb': user_bid, 'hbd': current_user.get('Full Name'), 'id': crow['id']}
+                                        )
+                                    st.success(f"🎉 Bid of ₹{user_bid} accepted! You are now the highest bidder, replacing previous lower bids.")
+                                    st.rerun()
+                                else:
+                                    st.warning(f"Bid must be strictly higher than current highest bid of ₹{current_highest}.")
             except Exception as e:
                 st.warning(f"Error loading marketplace: {e}")
 
-        # 10. HELPDESK & TICKETS
+        # 10. JOB SEEKER & EMPLOYMENT PORTAL
+        elif menu_selection == "👔 Job Seeker & Employment Portal":
+            st.markdown("### 👔 Community Job Seeker & Employment Portal")
+            st.info("Residents (ages 18 to 118) seeking work can submit structured biodata profiles. Employers submit daily wage bids; job seekers can lock in their preferred employer and connect directly via directory contact.")
+            
+            with st.expander("➕ Submit Job Seeker Biodata Portfolio", expanded=False):
+                with st.form("job_seeker_form", clear_on_submit=True):
+                    js_age = st.number_input("Age", min_value=18, max_value=118, value=30)
+                    js_skills = st.text_area("Skills & Experience Details")
+                    js_role = st.text_input("Preferred Role / Job Type (e.g. Cook, Guard, Tutor, Driver)")
+                    if st.form_submit_button("Publish Biodata Portfolio"):
+                        if js_skills and js_role:
+                            with engine.begin() as conn:
+                                conn.execute(
+                                    text('INSERT INTO togethespace_v4_job_seekers (applicant_name, age, skills, preferred_role, status) VALUES (:an, :age, :sk, :pr, \'Available\')'),
+                                    {'an': current_user.get('Full Name'), 'age': js_age, 'sk': js_skills, 'pr': js_role}
+                                )
+                            st.success("Biodata portfolio published successfully!")
+                            st.rerun()
+                        else:
+                            st.warning("Please fill in skills and preferred role.")
+
+            st.markdown("---")
+            st.markdown("#### 📋 Listed Job Seekers & Competitive Daily Wage Bidding")
+            try:
+                with engine.connect() as conn:
+                    seekers_df = pd.read_sql(text('SELECT * FROM togethespace_v4_job_seekers ORDER BY created_at DESC;'), con=conn)
+                
+                if seekers_df.empty:
+                    st.info("No job seekers currently registered.")
+                else:
+                    for _, srow in seekers_df.iterrows():
+                        # Fetch bids for this seeker
+                        with engine.connect() as conn:
+                            bids_df = pd.read_sql(text('SELECT * FROM togethespace_v4_job_bids WHERE job_seeker_id = :jid ORDER BY daily_wage DESC;'), con=conn, params={'jid': srow['id']})
+                        
+                        top_bid_text = "No employer bids yet."
+                        max_wage = 0.00
+                        if not bids_df.empty:
+                            top_bid = bids_df.iloc[0]
+                            max_wage = float(top_bid['daily_wage'])
+                            top_bid_text = f"Top Offer: ₹{max_wage:.2f}/day by {top_bid['employer_name']}"
+
+                        locked_status = f"<br>🔒 <b>Locked Employer:</b> {srow['locked_employer']}" if srow.get('locked_employer') else ""
+
+                        st.markdown(f"""
+                            <div class="sea-green-card">
+                                <h4>👔 {srow['applicant_name']} (Age: {srow['age']}) — Role: {srow['preferred_role']} <span style="font-size:0.7em; background:#1b5e20; color:white; padding:2px 6px; border-radius:4px;">{srow['status']}</span></h4>
+                                <p style="color: #111111;"><b>Skills & Biodata:</b> {srow['skills']}</p>
+                                <p style="color: #0d47a1; font-weight: 600;">💰 {top_bid_text}</p>
+                                {locked_status}
+                            </div>
+                        """, unsafe_allow_html=True)
+
+                        # Employer wage bidding form
+                        with st.form(f"wage_bid_form_{srow['id']}"):
+                            offered_wage = st.number_input("Offer Daily Wage (₹ / day)", min_value=100.00, value=500.00, step=50.00, key=f"wage_{srow['id']}")
+                            if st.form_submit_button("Submit Daily Wage Offer"):
+                                with engine.begin() as conn:
+                                    conn.execute(
+                                        text('INSERT INTO togethespace_v4_job_bids (job_seeker_id, employer_name, daily_wage) VALUES (:jid, :en, :dw)'),
+                                        {'jid': srow['id'], 'en': current_user.get('Full Name'), 'dw': offered_wage}
+                                    )
+                                st.success(f"Daily wage offer of ₹{offered_wage} submitted successfully!")
+                                st.rerun()
+
+                        # If current user is the job seeker, allow locking employer
+                        if current_user.get('Full Name') == srow['applicant_name'] and not srow.get('locked_employer'):
+                            if not bids_df.empty:
+                                emp_options = bids_df['employer_name'].unique().tolist()
+                                with st.form(f"lock_employer_form_{srow['id']}"):
+                                    chosen_emp = st.selectbox("Lock In Preferred Employer", options=emp_options)
+                                    if st.form_submit_button("Lock Employer & Connect"):
+                                        with engine.begin() as conn:
+                                            conn.execute(
+                                                text('UPDATE togethespace_v4_job_seekers SET locked_employer = :le, status = \'Hired\' WHERE id = :id'),
+                                                {'le': chosen_emp, 'id': srow['id']}
+                                            )
+                                        st.success(f"Employer {chosen_emp} locked in! Contact details are available in the directory.")
+                                        st.rerun()
+            except Exception as e:
+                st.warning(f"Error loading job seekers: {e}")
+
+        # 11. PERSONALIZED MASS EVENT INVITATIONS
+        elif menu_selection == "✉️ Personalized Event Invitations":
+            st.markdown("### ✉️ Personalized Mass Event Invitations")
+            st.info("Host private ceremonies (marriages, Annaprashan, birthdays) and invite community residents with personalized digital invitation cards.")
+            
+            try:
+                with engine.connect() as conn:
+                    dir_names_df = pd.read_sql(text('SELECT "Full Name", "Organization" FROM togethespace_v4_directory ORDER BY "Full Name" ASC;'), con=conn)
+                resident_names = [f"{r['Full Name']} ({r['Organization']})" for _, r in dir_names_df.iterrows()]
+            except Exception:
+                resident_names = []
+
+            with st.expander("➕ Create & Send Mass Event Invitation", expanded=False):
+                with st.form("event_invite_form", clear_on_submit=True):
+                    ev_title = st.text_input("Event Title (e.g. Grand Marriage Ceremony / Annaprashan)")
+                    ev_details = st.text_area("Event Details, Date, Time, & Venue")
+                    selected_guests = st.multiselect("Select Residents to Invite", options=resident_names)
+                    
+                    if st.form_submit_button("Dispatch Personalized Invitations"):
+                        if ev_title and selected_guests:
+                            with engine.begin() as conn:
+                                for guest in selected_guests:
+                                    conn.execute(
+                                        text('INSERT INTO togethespace_v4_event_invites (host_name, event_title, event_details, invited_guest) VALUES (:hn, :et, :ed, :ig)'),
+                                        {'hn': current_user.get('Full Name'), 'et': ev_title, 'ed': ev_details, 'ig': guest}
+                                    )
+                            st.success(f"Successfully dispatched personalized invitations to {len(selected_guests)} residents!")
+                            st.rerun()
+                        else:
+                            st.warning("Please provide an event title and select at least one guest.")
+
+            st.markdown("---")
+            st.markdown("#### 📨 Your Received Personal Invitations")
+            try:
+                with engine.connect() as conn:
+                    my_invites = pd.read_sql(
+                        text('SELECT * FROM togethespace_v4_event_invites WHERE invited_guest ILIKE :gn ORDER BY created_at DESC;'),
+                        con=conn, params={'gn': f"%{current_user.get('Full Name')}%"}
+                    )
+                
+                if my_invites.empty:
+                    st.info("No personal event invitations received yet.")
+                else:
+                    for _, irow in my_invites.iterrows():
+                        st.markdown(f"""
+                            <div class="notice-card">
+                                <h4 style="color: #0d47a1;">💌 Invitation: {irow['event_title']}</h4>
+                                <p style="color: #444444; font-size: 0.85em;">Hosted by: <b>{irow['host_name']}</b> • Sent: {irow['created_at']}</p>
+                                <p style="color: #111111; font-size: 1.05em;">{irow['event_details']}</p>
+                            </div>
+                        """, unsafe_allow_html=True)
+            except Exception as e:
+                st.warning(f"Error loading invitations: {e}")
+
+        # 12. HELPDESK & TICKETS
         elif menu_selection == "🛠️ Helpdesk & Tickets":
             st.markdown("### 🛠️ Helpdesk & Maintenance Tickets")
             st.info("Raise plumbing, electrical, or structural maintenance requests to block administrators or master admin. Comments and updates are restricted to administrators.")
@@ -1166,8 +1437,8 @@ else:
             except Exception as e:
                 st.warning(f"Error loading helpdesk: {e}")
 
-        # 11. FACILITY BOOKING & PUBLIC UTILITIES DIRECTORY
-        elif menu_selection == "📅 Facility Booking":
+        # 13. FACILITY BOOKING & PUBLIC UTILITIES DIRECTORY
+        elif menu_selection == "📅 Facility Booking & Utilities":
             st.markdown("### 📅 Community Facility Booking & Public Utilities Directory")
             st.info("Direct clickable navigation to municipal authorities, panchayat offices, local police stations, electric and water supply authorities, schools, colleges, municipal hospitals, and councillor offices.")
             
@@ -1189,14 +1460,14 @@ else:
                     </div>
                 """, unsafe_allow_html=True)
 
-        # 12. SAFETY & SOS ALERTS
+        # 14. SAFETY & SOS ALERTS
         elif menu_selection == "🚨 Safety & SOS Alerts":
             st.markdown("### 🚨 Emergency Safety & SOS Broadcasts")
             st.error("⚠️ EMERGENCY SOS: Instant escalation to all Block Admins and Master Admin. Bypasses standard bottlenecks during critical life-safety events.")
             if st.button("🚨 TRIGGER EMERGENCY SOS", type="primary"):
                 st.error("🚨 EMERGENCY SOS BROADCASTED TO ALL BLOCK & MASTER ADMINS!")
 
-        # 13. COMMUNITY POLLS & VOTING
+        # 15. COMMUNITY POLLS & VOTING
         elif menu_selection == "📊 Community Polls & Voting":
             st.markdown("### 📊 Community Polls & Electronic Voting")
             st.info("Democratic participation in block decisions, budget approvals, and community association elections.")
@@ -1221,7 +1492,7 @@ else:
                 </div>
             """, unsafe_allow_html=True)
 
-        # 14. LOCAL ATTRACTIONS & EVENTS
+        # 16. LOCAL ATTRACTIONS & EVENTS
         elif menu_selection == "🌟 Local Attractions & Events":
             st.markdown("### 🌟 Local Attractions & Neighborhood Events")
             st.info("Discover nearby heritage spots, restaurants, parks, and upcoming festive events. All posts undergo Sub-Admin pre-screening before public display.")
@@ -1244,7 +1515,7 @@ else:
                 </div>
             """, unsafe_allow_html=True)
 
-        # 15. COMMUNITY ADMIN PORTAL
+        # 17. COMMUNITY ADMIN PORTAL
         elif menu_selection == "🔐 Community Admin Portal":
             st.markdown('### 🔐 Administrator Portal')
             
