@@ -168,7 +168,6 @@ else:
                 );
             """))
 
-            # Ensure columns exist if table was already created previously
             conn.execute(text('ALTER TABLE togethespace_v4_directory ADD COLUMN IF NOT EXISTS "Employment_Status" VARCHAR(50) DEFAULT \'Neutral\';'))
             conn.execute(text('ALTER TABLE togethespace_v4_directory ADD COLUMN IF NOT EXISTS "Qualification" TEXT;'))
 
@@ -653,7 +652,7 @@ else:
 
         # --- ROUTING BASED ON PUSH BUTTON SELECTION ---
 
-        # 1. RESIDENT DIRECTORY (With Employment Status & Qualification Display)
+        # 1. RESIDENT DIRECTORY
         if menu_selection == "📋 Resident Directory":
             st.markdown(f'### 📋 Resident & Member Directory Datasheet ({user_block})')
             
@@ -1105,7 +1104,7 @@ else:
             lang_choice = st.selectbox("Select Language / ভাষা / भाषा", ["English", "Bengali (বাংলা)", "Hindi (हिन्दी)"])
             course_choice = st.selectbox("Select Learning Course", ["Yoga & Mindfulness", "Artisan Cooking", "Creative Storytelling", "Python Code Making", "Crochet & Needlework", "Classical & Modern Song", "Prose & Poetry Writing", "Cricket Masterclass", "Football Tactics"])
             
-            day_of_year = datetime.now().timetuple().yday
+            day_of_year = datetime.now().timetuple().tm_yday
             auto_week_num = ((day_of_year - 1) // 7) % 52 + 1
             
             st.markdown(f"🗓️ **Automatic Cycle Day:** Day {day_of_year} of Year (Active Week: {auto_week_num})")
@@ -1174,7 +1173,7 @@ else:
                         else:
                             st.warning("Please complete the exam questions.")
 
-        # 9. CLASSIFIEDS & MARKETPLACE (Live Auction / Bidding System with Fixed Syntax Error)
+        # 9. CLASSIFIEDS & MARKETPLACE (Live Auction / Bidding System)
         elif menu_selection == "🛒 Classifieds & Marketplace (Auction)":
             st.markdown("### 🛒 Community Classifieds & Marketplace (Live Bidding Auction)")
             st.info("Buy, sell, or rent items securely. Prospective buyers place daily/fixed price bids; only the highest current bid is displayed, automatically replacing lower bids.")
@@ -1240,7 +1239,7 @@ else:
             except Exception as e:
                 st.warning(f"Error loading marketplace: {e}")
 
-        # 10. JOB MATCH & EMPLOYMENT DIRECTORY (Integrated via Profile Dropdown & Free Text Qualification)
+        # 10. JOB MATCH & EMPLOYMENT DIRECTORY
         elif menu_selection == "👔 Job Match & Employment Directory":
             st.markdown("### 👔 Community Job Match & Employment Directory")
             st.info("Match job seekers with employers across blocks. Update your employment status ('Job Seeker', 'Want to Hire', or 'Neutral') and free-text qualification in your profile settings to appear here instantly.")
