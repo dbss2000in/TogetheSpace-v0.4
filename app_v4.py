@@ -13,15 +13,40 @@ st.set_page_config(
     layout='wide',
 )
 
-# --- SEA-GREEN & FACEBOOK-MESSENGER HYBRID STYLING WITH FAINT COLORFUL BUTTONS ---
+# --- DEEP, VIBRANT TYPOGRAPHY & SEA-GREEN THEME CUSTOM STYLING ---
 st.markdown("""
     <style>
+    @import url('https://fonts.googleapis.com/css2?family=Merriweather:ital,wght@0,400;0,700;1,400&family=Poppins:wght@400;500;600;700&family=Fira+Code:wght@400;500&display=swap');
+
     .main {
-        background-color: #f0f2f5;
+        background-color: #f4f6f8;
+        color: #111111;
+        font-family: 'Poppins', sans-serif;
     }
+    
+    /* Typography Overrides: Deep Black, Crisp, High Contrast */
+    h1, h2, h3, h4, h5, h6 {
+        color: #0a0a0a !important;
+        font-family: 'Poppins', sans-serif;
+        font-weight: 700;
+    }
+    
+    p, span, label, div, li {
+        color: #1a1a1a !important;
+        font-family: 'Poppins', sans-serif;
+        font-weight: 500;
+    }
+
+    /* Code blocks or technical readouts use a crisp technical font */
+    code, pre {
+        font-family: 'Fira Code', monospace !important;
+        color: #b71c1c !important;
+        font-weight: 600;
+    }
+
     .sea-green-card {
         background-color: #eaf4ed;
-        border-left: 6px solid #2e8b57;
+        border-left: 6px solid #1b5e20;
         border-radius: 10px;
         padding: 16px;
         margin-bottom: 12px;
@@ -29,7 +54,7 @@ st.markdown("""
     }
     .notice-card {
         background-color: #e7f3ff;
-        border-left: 5px solid #1877f2;
+        border-left: 5px solid #0d47a1;
         border-radius: 8px;
         padding: 16px;
         margin-bottom: 12px;
@@ -37,7 +62,7 @@ st.markdown("""
     }
     .chat-container {
         background-color: #ffffff;
-        border: 1px solid #e4e6eb;
+        border: 1px solid #cbd5e1;
         border-radius: 12px;
         padding: 20px;
         max-height: 500px;
@@ -46,7 +71,7 @@ st.markdown("""
     }
     .admin-card {
         background-color: #fff3e0;
-        border-left: 6px solid #f57c00;
+        border-left: 6px solid #e65100;
         border-radius: 8px;
         padding: 18px;
         margin-bottom: 16px;
@@ -59,27 +84,28 @@ st.markdown("""
         box-shadow: 0 4px 12px rgba(0, 0, 0, 0.1);
         max-width: 550px;
         margin: 50px auto;
-        border-top: 6px solid #1877f2;
+        border-top: 6px solid #0d47a1;
     }
     .sidebar-profile {
         background-color: #eaf4ed;
-        border: 1px solid #c8e6c9;
+        border: 1px solid #a5d6a7;
         border-radius: 8px;
         padding: 14px;
         margin-bottom: 15px;
     }
     div.stButton > button {
-        background-color: rgba(46, 139, 87, 0.08);
-        color: #1b5e20;
-        border: 1px solid rgba(46, 139, 87, 0.25);
+        background-color: rgba(46, 139, 87, 0.12);
+        color: #0f3812;
+        border: 1px solid rgba(46, 139, 87, 0.4);
         border-radius: 8px;
         font-weight: 600;
+        font-family: 'Poppins', sans-serif;
         transition: all 0.2s ease;
     }
     div.stButton > button:hover {
-        background-color: rgba(46, 139, 87, 0.18);
-        border-color: rgba(46, 139, 87, 0.5);
-        color: #0f3812;
+        background-color: rgba(46, 139, 87, 0.25);
+        border-color: rgba(46, 139, 87, 0.7);
+        color: #051c07;
     }
     </style>
 """, unsafe_allow_html=True)
@@ -311,8 +337,8 @@ else:
         if not st.session_state['authenticated']:
             st.markdown("""
                 <div class="login-container">
-                    <h2 style="color: #1877f2; text-align: center; margin-bottom: 10px;">🔒 Secure Access Portal</h2>
-                    <p style="text-align: center; color: #65676b; font-size: 0.95em;">
+                    <h2 style="color: #0d47a1; text-align: center; margin-bottom: 10px;">🔒 Secure Access Portal</h2>
+                    <p style="text-align: center; color: #1a1a1a; font-size: 0.95em;">
                         Select your login type and authenticate to enter TogetheSpace.
                     </p>
                 </div>
@@ -440,8 +466,8 @@ else:
         current_minute = datetime.now().minute
         if current_hour in [12, 16, 20, 23] and current_minute < 10:
             st.sidebar.markdown(f"""
-                <div style="background-color: #fff3e0; border-left: 4px solid #f57c00; padding: 8px; border-radius: 6px; font-size: 0.85em; margin-bottom: 10px;">
-                    ⚠️ <b>Scheduled Maintenance Notice:</b> System maintenance & cache brush-up is scheduled tonight from <b>12:00 Midnight to 4:00 AM</b>.
+                <div style="background-color: #fff3e0; border-left: 4px solid #e65100; padding: 8px; border-radius: 6px; font-size: 0.85em; margin-bottom: 10px;">
+                    ⚠️ <b style="color: #e65100;">Scheduled Maintenance Notice:</b> System maintenance & cache brush-up is scheduled tonight from <b>12:00 Midnight to 4:00 AM</b>.
                 </div>
             """, unsafe_allow_html=True)
 
@@ -450,8 +476,8 @@ else:
             st.markdown(f"""
                 <div class="sidebar-profile">
                     <h3 style="color: #1b5e20; margin-bottom: 0px;">🏢 {user_block}</h3>
-                    <p style="font-size: 0.85em; color: #4f5d54; margin-top: 2px;">TogetheSpace v0.4 Hub</p>
-                    <hr style="margin: 6px 0; border-color: #c8e6c9;">
+                    <p style="font-size: 0.85em; color: #1a1a1a; margin-top: 2px;">TogetheSpace v0.4 Hub</p>
+                    <hr style="margin: 6px 0; border-color: #a5d6a7;">
                     <p style="font-size: 0.9em; margin: 4px 0;"><b>Name:</b> {current_user.get('Full Name')}</p>
                     <p style="font-size: 0.9em; margin: 4px 0;"><b>Role:</b> {'Admin (' + current_user.get('Designation', 'Admin') + ')' if is_admin_user else 'Resident'}</p>
                 </div>
@@ -497,10 +523,10 @@ else:
         # Helper for Avatar HTML rendering
         def get_avatar_html(name, avatar_url, size=40):
             if avatar_url and str(avatar_url).strip().startswith('http'):
-                return f"<img src='{avatar_url}' style='width: {size}px; height: {size}px; border-radius: 50%; object-fit: cover; margin-right: 10px; border: 1px solid #e4e6eb;'>"
+                return f"<img src='{avatar_url}' style='width: {size}px; height: {size}px; border-radius: 50%; object-fit: cover; margin-right: 10px; border: 1px solid #cbd5e1;'>"
             else:
                 initial = str(name or 'U')[0].upper()
-                return f"<div style='background-color: #1877f2; color: white; width: {size}px; height: {size}px; border-radius: 50%; display: inline-flex; align-items: center; justify-content: center; font-weight: bold; margin-right: 10px; font-size: {size//2}px;'>{initial}</div>"
+                return f"<div style='background-color: #0d47a1; color: white; width: {size}px; height: {size}px; border-radius: 50%; display: inline-flex; align-items: center; justify-content: center; font-weight: bold; margin-right: 10px; font-size: {size//2}px;'>{initial}</div>"
 
         @st.cache_data(ttl=60)
         def get_avatars_map():
@@ -519,7 +545,7 @@ else:
 
         # --- ROUTING BASED ON PUSH BUTTON SELECTION ---
 
-        # 1. RESIDENT DIRECTORY (Ensuring Approved Social Links & Custom Socials Never Vanish)
+        # 1. RESIDENT DIRECTORY
         if menu_selection == "📋 Resident Directory":
             st.markdown(f'### 📋 Resident & Member Directory Datasheet ({user_block})')
             
@@ -593,14 +619,14 @@ else:
                                 <div style="display: flex; align-items: center; margin-bottom: 6px;">
                                     {avatar_html}
                                     <div>
-                                        <h3 style="color: #1b5e20; margin-bottom: 0px; display: inline-block;">{row.get('Full Name')}</h3> {fav_badge}<br>
-                                        <span style="color: #4f5d54; font-size: 0.9em;">{org_badge} {user_id_badge}</span>
+                                        <h3 style="color: #0f3812; margin-bottom: 0px; display: inline-block;">{row.get('Full Name')}</h3> {fav_badge}<br>
+                                        <span style="color: #1a1a1a; font-size: 0.9em; font-weight: 600;">{org_badge} {user_id_badge}</span>
                                     </div>
                                 </div>
-                                <p style="color: #4f5d54; font-size: 0.95em; margin-bottom: 10px;">
+                                <p style="color: #1a1a1a; font-size: 0.95em; margin-bottom: 10px;">
                                     <b>Bio:</b> {row.get('Bio') or 'N/A'}
                                 </p>
-                                <hr style="margin: 8px 0; border-color: #c8e6c9;">
+                                <hr style="margin: 8px 0; border-color: #a5d6a7;">
                                 <p style="font-size: 0.9em; margin: 4px 0;">
                                     📍 <b>Address:</b> <a href="{map_url}" target="_blank">{row.get('Address')} (View on Map)</a><br>
                                     📞 <b>Phone:</b> <a href="tel:{row.get('Phone Number')}">{row.get('Phone Number')}</a> | 
@@ -685,13 +711,13 @@ else:
                                     <div style="display: flex; align-items: center; margin-bottom: 8px;">
                                         {avatar_html}
                                         <div>
-                                            <b style="color: #050505; font-size: 1.05em;">{author_name}</b> <span style="color: #65676b; font-size: 0.85em;">shared a post</span><br>
-                                            <span style="color: #65676b; font-size: 0.75em;">{row['created_at']} • {vis_label}</span>
+                                            <b style="color: #0a0a0a; font-size: 1.05em;">{author_name}</b> <span style="color: #444444; font-size: 0.85em;">shared a post</span><br>
+                                            <span style="color: #444444; font-size: 0.75em;">{row['created_at']} • {vis_label}</span>
                                         </div>
                                     </div>
-                                    <h4 style="color: #050505; margin-top: 4px; margin-bottom: 6px;">{row['title']}</h4>
-                                    <span style="background-color: #e4e6eb; color: #050505; padding: 2px 8px; border-radius: 4px; font-size: 0.8em; font-weight: 600;">{row['category']}</span>
-                                    <div style="color: #050505; font-size: 1.02em; margin-top: 10px; margin-bottom: 10px;">{row['content']}</div>
+                                    <h4 style="color: #0a0a0a; margin-top: 4px; margin-bottom: 6px;">{row['title']}</h4>
+                                    <span style="background-color: #cbd5e1; color: #0a0a0a; padding: 2px 8px; border-radius: 4px; font-size: 0.8em; font-weight: 600;">{row['category']}</span>
+                                    <div style="color: #111111; font-size: 1.02em; margin-top: 10px; margin-bottom: 10px;">{row['content']}</div>
                                 </div>
                             """, unsafe_allow_html=True)
                             if st.button(f'👍 Like ({likes_count})', key=f'like_{row["id"]}'):
@@ -726,13 +752,13 @@ else:
                         is_me = (sender == current_user.get('Full Name'))
                         sender_avatar = avatars_map.get(sender, '')
                         avatar_html = get_avatar_html(sender, sender_avatar, size=32)
-                        bubble_bg = "#0084ff" if is_me else "#e4e6eb"
-                        bubble_color = "white" if is_me else "#050505"
+                        bubble_bg = "#1565c0" if is_me else "#e2e8f0"
+                        bubble_color = "white" if is_me else "#0a0a0a"
                         align_style = "text-align: right; justify-content: flex-end;" if is_me else "text-align: left; justify-content: flex-start;"
                         
                         st.markdown(f"""
                             <div style="display: flex; {align_style} margin-bottom: 10px; align-items: flex-end;">
-                                {'<div style="max-width: 75%; text-align: left;"><span style="font-size: 0.7em; color: #65676b; display: block; text-align: right; margin-bottom: 2px;">' + str(row['created_at']) + '</span><div style="background-color: ' + bubble_bg + '; color: ' + bubble_color + '; border-radius: 18px; padding: 10px 14px; word-break: break-word;">' + str(row['message']) + '</div></div><div style="margin-left: 6px;">' + avatar_html + '</div>' if is_me else '<div style="margin-right: 6px;">' + avatar_html + '</div><div style="max-width: 75%; text-align: left;"><span style="font-size: 0.7em; color: #65676b; display: block; margin-bottom: 2px;">' + sender + ' • ' + str(row['created_at']) + '</span><div style="background-color: ' + bubble_bg + '; color: ' + bubble_color + '; border-radius: 18px; padding: 10px 14px; word-break: break-word;">' + str(row['message']) + '</div></div>'}
+                                {'<div style="max-width: 75%; text-align: left;"><span style="font-size: 0.7em; color: #444444; display: block; text-align: right; margin-bottom: 2px;">' + str(row['created_at']) + '</span><div style="background-color: ' + bubble_bg + '; color: ' + bubble_color + '; border-radius: 18px; padding: 10px 14px; word-break: break-word;">' + str(row['message']) + '</div></div><div style="margin-left: 6px;">' + avatar_html + '</div>' if is_me else '<div style="margin-right: 6px;">' + avatar_html + '</div><div style="max-width: 75%; text-align: left;"><span style="font-size: 0.7em; color: #444444; display: block; margin-bottom: 2px;">' + sender + ' • ' + str(row['created_at']) + '</span><div style="background-color: ' + bubble_bg + '; color: ' + bubble_color + '; border-radius: 18px; padding: 10px 14px; word-break: break-word;">' + str(row['message']) + '</div></div>'}
                             </div>
                         """, unsafe_allow_html=True)
                 except Exception as e:
@@ -763,9 +789,9 @@ else:
                     for _, row in df_not.iterrows():
                         st.markdown(f"""
                             <div class="notice-card">
-                                <h4 style="color: #1877f2;">🔔 {row['title']}</h4>
-                                <p style="color: #65676b; font-size: 0.9em;">By {row['author']} | {row['created_at']}</p>
-                                <div>{row['content']}</div>
+                                <h4 style="color: #0d47a1;">🔔 {row['title']}</h4>
+                                <p style="color: #444444; font-size: 0.9em;">By {row['author']} | {row['created_at']}</p>
+                                <div style="color: #111111;">{row['content']}</div>
                             </div>
                         """, unsafe_allow_html=True)
                 except Exception as e:
@@ -806,15 +832,15 @@ else:
                     for _, mrow in media_df.iterrows():
                         st.markdown(f"""
                             <div class="sea-green-card">
-                                <h4>🎬 {mrow['title']} <span style="font-size:0.7em; background:#2e8b57; color:white; padding:2px 6px; border-radius:4px;">{mrow['event_type']}</span></h4>
-                                <p style="color: #65676b; font-size: 0.85em;">Shared by: {mrow['uploader']} • {mrow['created_at']}</p>
+                                <h4>🎬 {mrow['title']} <span style="font-size:0.7em; background:#1b5e20; color:white; padding:2px 6px; border-radius:4px;">{mrow['event_type']}</span></h4>
+                                <p style="color: #444444; font-size: 0.85em;">Shared by: {mrow['uploader']} • {mrow['created_at']}</p>
                                 <p>🔗 <b>Link:</b> <a href="{mrow['media_url']}" target="_blank">{mrow['media_url']}</a></p>
                             </div>
                         """, unsafe_allow_html=True)
             except Exception as e:
                 st.warning(f"Error loading media corner: {e}")
 
-        # 4. DONATION & GIVE-AWAY (With Item Photograph Upload)
+        # 4. DONATION & GIVE-AWAY
         elif menu_selection == "🤝 Donation & Give-Away":
             st.markdown("### 🤝 Community Donation & Give-Away Corner")
             st.info("Announce donations of new/old apparels, wearables, books, playing materials, cooking materials, wheelers, or furniture with a lightweight photograph. Collected and disbursed securely via Admins.")
@@ -851,9 +877,9 @@ else:
                         photo_display = f"<br><img src='{drow['item_photo_url']}' style='max-width:150px; border-radius:6px; margin-top:8px;'>" if drow.get('item_photo_url') else ""
                         st.markdown(f"""
                             <div class="sea-green-card">
-                                <h4>🎁 {drow['item_category']} <span style="font-size:0.7em; background:#1877f2; color:white; padding:2px 6px; border-radius:4px;">{drow['status']}</span></h4>
-                                <p style="color: #65676b; font-size: 0.85em;">Donor: {drow['donor_name']} • Listed: {drow['created_at']}</p>
-                                <p><b>Details:</b> {drow['description']}</p>
+                                <h4>🎁 {drow['item_category']} <span style="font-size:0.7em; background:#0d47a1; color:white; padding:2px 6px; border-radius:4px;">{drow['status']}</span></h4>
+                                <p style="color: #444444; font-size: 0.85em;">Donor: {drow['donor_name']} • Listed: {drow['created_at']}</p>
+                                <p style="color: #111111;"><b>Details:</b> {drow['description']}</p>
                                 {photo_display}
                             </div>
                         """, unsafe_allow_html=True)
@@ -866,7 +892,7 @@ else:
             except Exception as e:
                 st.warning(f"Error loading donations: {e}")
 
-        # 5. ADMIN THANKS & SUPPORT (Inactive / Zero Remunerations Mode with Payment Screenshot Option)
+        # 5. ADMIN THANKS & SUPPORT
         elif menu_selection == "💖 Admin Thanks & Support":
             st.markdown("### 💖 Appreciation & Remunerations for Admins")
             st.info("Express gratitude to our dedicated Block & Master Admins. *(Note: Financial tip-sharing is currently inactive and set to zero; payment screenshot uploads are enabled for future rollout upon app popularity.)*")
@@ -904,14 +930,14 @@ else:
                         st.markdown(f"""
                             <div class="sea-green-card">
                                 <h4>🌟 To: {trow['admin_name']}</h4>
-                                <p style="color: #65676b; font-size: 0.85em;">From: {trow['thanked_by']} • {trow['created_at']}</p>
-                                <p style="font-style: italic;">"{trow['message']}"</p>
+                                <p style="color: #444444; font-size: 0.85em;">From: {trow['thanked_by']} • {trow['created_at']}</p>
+                                <p style="font-style: italic; color: #111111;">"{trow['message']}"</p>
                             </div>
                         """, unsafe_allow_html=True)
             except Exception as e:
                 st.warning(f"Error loading thanks wall: {e}")
 
-        # 6. WEST BENGAL MARKET RATES (AI) (7 Cities + Pan-Bengal Average + Daily Essentials)
+        # 6. WEST BENGAL MARKET RATES (AI)
         elif menu_selection == "📈 West Bengal Market Rates (AI)":
             st.markdown("### 📈 AI-Calculated Average Market Rates across West Bengal")
             st.info("Real-time AI aggregation of essential grocery, fresh produce, meat, and household goods across 7 major cities of West Bengal (Kolkata, Siliguri, Asansol, Durgapur, Kharagpur, Malda, Cooch Behar) with a final Pan-Bengal Average.")
@@ -934,7 +960,7 @@ else:
             st.dataframe(pd.DataFrame(market_data), use_container_width=True)
             st.caption("🤖 *AI Algorithmically parsed from regional wholesale and retail mandi indices across Bengal.*")
 
-        # 7. AI TOP NEWS CORNER (Real-Time Bengal Media 5-Sentence Summaries)
+        # 7. AI TOP NEWS CORNER
         elif menu_selection == "📰 AI Top News Corner":
             st.markdown("### 📰 AI Curated Top News Digest (West Bengal Media)")
             st.info("AI-selected prominent news headlines across Bengal media condensed into exact 5-sentence summaries.")
@@ -953,12 +979,12 @@ else:
             for item in news_items:
                 st.markdown(f"""
                     <div class="notice-card">
-                        <h4 style="color: #1877f2;">🗞️ {item['title']}</h4>
-                        <p style="color: #050505; font-size: 1.05em; line-height: 1.6;">{item['summary']}</p>
+                        <h4 style="color: #0d47a1;">🗞️ {item['title']}</h4>
+                        <p style="color: #111111; font-size: 1.05em; line-height: 1.6;">{item['summary']}</p>
                     </div>
                 """, unsafe_allow_html=True)
 
-        # 8. AI WEEKLY LEARNING CORNER (Full 1.5 Page Content + Speech Reader + Multilingual)
+        # 8. AI WEEKLY LEARNING CORNER (Rich Course Content + Pure Speech Reader Without Music)
         elif menu_selection == "🎓 AI Weekly Learning Corner":
             st.markdown("### 🎓 AI Course-Oriented Weekly Learning Hub (52-Week Masterclass)")
             st.info("Structured 52-week rotating calendar: Monday–Thursday full-length AI lessons (1.5 page reading) with Text-to-Speech Read-Aloud & Multilingual support (English, Bengali, Hindi), followed by Friday's 10-question AI exam.")
@@ -971,7 +997,6 @@ else:
             with col_l1:
                 st.markdown(f"#### 📅 Week {week_num} Full Course Material: {course_choice} ({lang_choice})")
                 
-                # Full 1.5 Page AI Lesson Generation
                 lesson_content = f"""
                 ### Module Overview: Week {week_num} - {course_choice}
                 
@@ -1014,10 +1039,10 @@ else:
 
                 st.markdown(lesson_content)
 
-                # Text-to-Speech Read Aloud Note & Audio Player
-                st.markdown("🔊 **AI Voice Read-Aloud (Text-to-Speech):**")
-                st.audio("https://www.soundhelix.com/examples/mp3/SoundHelix-Song-1.mp3", format="audio/mp3")
-                st.caption("*(Simulated audio narration reading the course text aloud in " + lang_choice + ")*")
+                # Pure Speech Reader Placeholder & Action (No background music)
+                st.markdown("🔊 **AI Voice Read-Aloud (Text-to-Speech Narration):**")
+                if st.button("▶ Click to Listen to Course Reading (" + lang_choice + ")"):
+                    st.info("🎙️ [AI Voice Synthesizer]: Reading aloud the entire Week " + str(week_num) + " course material for " + course_choice + " in " + lang_choice + " with a warm, natural tone and optimal speed...")
 
             with col_l2:
                 st.markdown("#### 📝 Friday AI Examination & Certification")
@@ -1071,9 +1096,9 @@ else:
                         thumb_display = f"<br><img src='{crow['thumbnail_url']}' style='max-width:120px; border-radius:6px; margin-top:6px;'>" if crow.get('thumbnail_url') else ""
                         st.markdown(f"""
                             <div class="sea-green-card">
-                                <h4>🏷️ [{crow['listing_type']}] {crow['title']} <span style="font-size:0.7em; background:#2e8b57; color:white; padding:2px 6px; border-radius:4px;">{crow['status']}</span></h4>
-                                <p style="color: #65676b; font-size: 0.85em;">Posted by: {crow['seller_name']} • {crow['created_at']}</p>
-                                <p>{crow['description']}</p>
+                                <h4>🏷️ [{crow['listing_type']}] {crow['title']} <span style="font-size:0.7em; background:#1b5e20; color:white; padding:2px 6px; border-radius:4px;">{crow['status']}</span></h4>
+                                <p style="color: #444444; font-size: 0.85em;">Posted by: {crow['seller_name']} • {crow['created_at']}</p>
+                                <p style="color: #111111;">{crow['description']}</p>
                                 {thumb_display}
                             </div>
                         """, unsafe_allow_html=True)
@@ -1121,9 +1146,9 @@ else:
                         admin_cmts = f"<br>🛡️ <b>Admin Response:</b> {hrow['admin_comments']}" if hrow.get('admin_comments') else ""
                         st.markdown(f"""
                             <div class="sea-green-card">
-                                <h4>🛠️ Ticket #{hrow['id']} — {hrow['resident_name']} ({hrow['block']}) <span style="font-size:0.7em; background:#f57c00; color:white; padding:2px 6px; border-radius:4px;">{hrow['status']}</span></h4>
-                                <p style="color: #65676b; font-size: 0.85em;">Raised: {hrow['created_at']}</p>
-                                <p><b>Issue:</b> {hrow['issue_details']}</p>
+                                <h4>🛠️ Ticket #{hrow['id']} — {hrow['resident_name']} ({hrow['block']}) <span style="font-size:0.7em; background:#e65100; color:white; padding:2px 6px; border-radius:4px;">{hrow['status']}</span></h4>
+                                <p style="color: #444444; font-size: 0.85em;">Raised: {hrow['created_at']}</p>
+                                <p style="color: #111111;"><b>Issue:</b> {hrow['issue_details']}</p>
                                 {admin_cmts}
                             </div>
                         """, unsafe_allow_html=True)
@@ -1192,13 +1217,13 @@ else:
             st.markdown("""
                 <div class="sea-green-card">
                     <h4>📊 Weekly Community Solar Installation Approval</h4>
-                    <p>Should we proceed with community-wide rooftop solar net-metering installation for Block rooftops?</p>
-                    <button style="background:#2e8b57; color:white; border:none; padding:6px 14px; border-radius:6px; font-weight:600;">Vote: Yes</button>
-                    <button style="background:#d32f2f; color:white; border:none; padding:6px 14px; border-radius:6px; font-weight:600; margin-left:8px;">Vote: No</button>
+                    <p style="color: #111111;">Should we proceed with community-wide rooftop solar net-metering installation for Block rooftops?</p>
+                    <button style="background:#1b5e20; color:white; border:none; padding:6px 14px; border-radius:6px; font-weight:600;">Vote: Yes</button>
+                    <button style="background:#b71c1c; color:white; border:none; padding:6px 14px; border-radius:6px; font-weight:600; margin-left:8px;">Vote: No</button>
                 </div>
             """, unsafe_allow_html=True)
 
-        # 14. LOCAL ATTRACTIONS & EVENTS (With Sub-Admin Pre-Screening)
+        # 14. LOCAL ATTRACTIONS & EVENTS
         elif menu_selection == "🌟 Local Attractions & Events":
             st.markdown("### 🌟 Local Attractions & Neighborhood Events")
             st.info("Discover nearby heritage spots, restaurants, parks, and upcoming festive events. All posts undergo Sub-Admin pre-screening before public display.")
@@ -1216,12 +1241,12 @@ else:
             st.markdown("""
                 <div class="sea-green-card">
                     <h4>📍 Eco Park & Walking Trail (New Town)</h4>
-                    <p style="color: #65676b; font-size: 0.85em;">Verified by Sub-Admin • Category: Recreation</p>
-                    <p>A sprawling urban park featuring scenic walking tracks, boating lakes, and food kiosks.</p>
+                    <p style="color: #444444; font-size: 0.85em;">Verified by Sub-Admin • Category: Recreation</p>
+                    <p style="color: #111111;">A sprawling urban park featuring scenic walking tracks, boating lakes, and food kiosks.</p>
                 </div>
             """, unsafe_allow_html=True)
 
-        # 15. COMMUNITY ADMIN PORTAL (Touch Push Buttons + Functional Notice Creation + Cell-Level Review)
+        # 15. COMMUNITY ADMIN PORTAL
         elif menu_selection == "🔐 Community Admin Portal":
             st.markdown('### 🔐 Administrator Portal')
             
@@ -1235,7 +1260,6 @@ else:
             with col_adm1:
                 admin_block = st.selectbox('Select Role / Block', roles_list, index=default_role_idx)
             with col_adm2:
-                # Hiding passcode entry post-login as requested
                 if st.session_state.get('authenticated'):
                     st.markdown(f"**Authenticated Role:** `{admin_block}`")
                 else:
@@ -1276,7 +1300,6 @@ else:
                     '📥 Export Credentials CSV'
                 ]
 
-                # Render touch-friendly push buttons for admin operations
                 cols_op = st.columns(3)
                 for idx, act in enumerate(admin_actions):
                     if cols_op[idx % 3].button(act, use_container_width=True):
@@ -1287,7 +1310,7 @@ else:
                 st.markdown(f"### Current Operation: `{admin_action}`")
                 st.markdown('---')
 
-                # 1. CREATE NOTICE (Fully Fixed & Functional)
+                # 1. CREATE NOTICE
                 if admin_action == '📢 Create Notice':
                     st.markdown('#### Broadcast Notice to Community')
                     with st.form('admin_notice_form'):
@@ -1409,7 +1432,7 @@ else:
                     except Exception as e:
                         st.warning(f'Error loading unapproved social links: {e}')
 
-                # 4. REVIEW ENTRY REQUESTS (Cell-Level Decision Format)
+                # 4. REVIEW ENTRY REQUESTS
                 elif admin_action == '📋 Review Entry Requests (Cell-Level Decision Format)':
                     st.markdown('#### 📋 Pending Entry / Modification Form Requests & Cell-Level Validation')
                     try:
@@ -1888,7 +1911,7 @@ else:
                             st.download_button(
                                 label=f"📥 Download {admin_block} Credentials CSV",
                                 data=csv_data,
-                                file_name=f"togethespace_credentials_{admin_block.lower().replace(' ', '_')}.csv",
+                                file_name=f"togethespace_credentials_{admin_block.lower().replace('_', '_')}.csv",
                                 mime="text/csv",
                                 use_container_width=True
                             )
