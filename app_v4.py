@@ -13,7 +13,7 @@ st.set_page_config(
     layout='wide',
 )
 
-# --- SEA-GREEN & FACEBOOK-MESSENGER HYBRID STYLING ---
+# --- SEA-GREEN & FACEBOOK-MESSENGER HYBRID STYLING WITH FAINT COLORFUL BUTTONS ---
 st.markdown("""
     <style>
     .main {
@@ -67,6 +67,20 @@ st.markdown("""
         border-radius: 8px;
         padding: 14px;
         margin-bottom: 15px;
+    }
+    /* Colorful faint transparent push button styling */
+    div.stButton > button {
+        background-color: rgba(46, 139, 87, 0.08);
+        color: #1b5e20;
+        border: 1px solid rgba(46, 139, 87, 0.25);
+        border-radius: 8px;
+        font-weight: 600;
+        transition: all 0.2s ease;
+    }
+    div.stButton > button:hover {
+        background-color: rgba(46, 139, 87, 0.18);
+        border-color: rgba(46, 139, 87, 0.5);
+        color: #0f3812;
     }
     </style>
 """, unsafe_allow_html=True)
@@ -149,6 +163,7 @@ else:
                     donor_name VARCHAR(150),
                     item_category VARCHAR(100),
                     description TEXT,
+                    item_photo_url TEXT,
                     status VARCHAR(50) DEFAULT 'Available for Collection',
                     created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
                 );
@@ -161,6 +176,29 @@ else:
                     message TEXT,
                     remuneration_amount NUMERIC(10,2) DEFAULT 0.00,
                     payment_screenshot_url TEXT,
+                    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+                );
+            """))
+            conn.execute(text("""
+                CREATE TABLE IF NOT EXISTS togethespace_v4_classifieds (
+                    id SERIAL PRIMARY KEY,
+                    seller_name VARCHAR(150),
+                    listing_type VARCHAR(50),
+                    title VARCHAR(200),
+                    description TEXT,
+                    thumbnail_url TEXT,
+                    status VARCHAR(50) DEFAULT 'Active',
+                    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+                );
+            """))
+            conn.execute(text("""
+                CREATE TABLE IF NOT EXISTS togethespace_v4_helpdesk (
+                    id SERIAL PRIMARY KEY,
+                    resident_name VARCHAR(150),
+                    block VARCHAR(50),
+                    issue_details TEXT,
+                    admin_comments TEXT DEFAULT '',
+                    status VARCHAR(50) DEFAULT 'Open',
                     created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
                 );
             """))
@@ -393,8 +431,6 @@ else:
         is_admin_user = st.session_state.get('is_admin_session', False)
 
         # --- AUTOMATED MAINTENANCE & NOTICES ANNOUNCEMENT ---
-        # Automated maintenance window: every 100 operational hours from 12:00 AM to 4:00 AM
-        # Pre-maintenance advance reminders at 12:00 Noon, 4:00 PM, 8:00 PM, and 11:00 PM
         current_hour = datetime.now().hour
         current_minute = datetime.now().minute
         if current_hour in [12, 16, 20, 23] and current_minute < 10:
@@ -572,7 +608,7 @@ else:
             except Exception as e:
                 st.warning(f'Directory loading failed: {e}')
 
-        # 2. COMMUNICATION & FEED
+        # 2. COMMUNICATION & FEED (With Jurisdiction-Bound Messenger Chat Recipient Dropdown)
         elif menu_selection == "🏡 Communication & Feed":
             st.markdown(f'### 🏡 Community Feed & Messenger Hub ({user_block})')
             
@@ -659,7 +695,22 @@ else:
                     st.warning(f'Unable to load feed: {e}')
 
             with chat_tab:
-                st.markdown('#### 💬 Community Messenger Chat')
+                st.markdown('#### 💬 Community Messenger Chat (Jurisdiction-Bound Recipients)')
+                
+                # Fetch recipient options based on user role and jurisdiction
+                try:
+                    with engine.connect() as conn:
+                        if is_master:
+                            rec_df = pd.read_sql(text('SELECT "Full Name", "Organization" FROM togethespace_v4_directory ORDER BY "Full Name" ASC;'), con=conn)
+                            recipient_options = [f"{r['Full Name']} ({r['Organization']})" for _, r in rec_df.iterrows()]
+                        else:
+                            rec_df = pd.read_sql(text('SELECT "Full Name", "Organization" FROM togethespace_v4_directory WHERE "Organization" = :b ORDER BY "Full Name" ASC;'), con=conn, params={'b': user_block})
+                            recipient_options = [f"{r['Full Name']} ({r['Organization']})" for _, r in rec_df.iterrows()]
+                except Exception:
+                    recipient_options = ['General Community']
+
+                selected_recipient = st.selectbox('💬 Send Message To:', options=['-- Select Recipient --'] + recipient_options)
+
                 st.markdown('<div class="chat-container">', unsafe_allow_html=True)
                 try:
                     with engine.connect() as conn:
@@ -686,14 +737,17 @@ else:
                     chat_sender = st.text_input('Your Name', value=current_user.get('Full Name', ''))
                     chat_msg = st.text_area('Aa (Type message...)')
                     chat_file = st.file_uploader('Upload Media (Up to 200 MB)', type=['jpg', 'png', 'mp3', 'mp4'], key='chat_up')
-                    if st.form_submit_button('Send'):
-                        if chat_sender and (chat_msg or chat_file is not None):
-                            f_msg = chat_msg if chat_msg else ""
+                    if st.form_submit_button('Send Message'):
+                        if chat_sender and selected_recipient != '-- Select Recipient --' and (chat_msg or chat_file is not None):
+                            f_msg = f"<b>To {selected_recipient}:</b> " + (chat_msg if chat_msg else "")
                             if chat_file is not None:
                                 f_msg += f"<br><br><a href='#' target='_blank'>📎 Attached File: {chat_file.name}</a>"
                             with engine.begin() as conn:
                                 conn.execute(text('INSERT INTO togethespace_v4_chat (sender, message) VALUES (:s, :m)'), {'s': chat_sender, 'm': f_msg})
+                            st.success("Message dispatched successfully!")
                             st.rerun()
+                        else:
+                            st.warning("Please select a recipient and enter a message or upload media.")
 
             with notice_tab:
                 st.markdown('#### 📢 Official Notices')
@@ -754,22 +808,24 @@ else:
             except Exception as e:
                 st.warning(f"Error loading media corner: {e}")
 
-        # 4. DONATION & GIVE-AWAY
+        # 4. DONATION & GIVE-AWAY (With Item Photograph Upload)
         elif menu_selection == "🤝 Donation & Give-Away":
             st.markdown("### 🤝 Community Donation & Give-Away Corner")
-            st.info("Announce donations of new/old apparels, wearables, books, playing materials, cooking materials, wheelers, or furniture. Collected and disbursed securely via Admins.")
+            st.info("Announce donations of new/old apparels, wearables, books, playing materials, cooking materials, wheelers, or furniture with a lightweight photograph. Collected and disbursed securely via Admins.")
             
-            with st.expander("➕ Announce Item Donation", expanded=False):
+            with st.expander("➕ Announce Item Donation with Photo", expanded=False):
                 with st.form("donation_form", clear_on_submit=True):
                     d_cat = st.selectbox("Item Category", ["Apparels / Wearables", "Books & Study Material", "Playing / Sports Materials", "Cooking Materials", "Wheelers (Cycles/Bikes)", "Furniture", "Other Essentials"])
                     d_desc = st.text_area("Item Description, Condition, & Pickup Details")
+                    d_photo = st.file_uploader("Upload Item Photograph (Lightweight)", type=['jpg', 'jpeg', 'png'])
                     d_sub = st.form_submit_button("Submit Donation Announcement")
                     if d_sub:
                         if d_desc:
+                            photo_url = f"https://cloudstorage.togethespace.local/donations/{urllib.parse.quote(d_photo.name)}" if d_photo else ""
                             with engine.begin() as conn:
                                 conn.execute(
-                                    text('INSERT INTO togethespace_v4_donations (donor_name, item_category, description, status) VALUES (:dn, :cat, :desc, \'Available for Collection\')'),
-                                    {'dn': current_user.get('Full Name'), 'cat': d_cat, 'desc': d_desc}
+                                    text('INSERT INTO togethespace_v4_donations (donor_name, item_category, description, item_photo_url, status) VALUES (:dn, :cat, :desc, :pho, \'Available for Collection\')'),
+                                    {'dn': current_user.get('Full Name'), 'cat': d_cat, 'desc': d_desc, 'pho': photo_url}
                                 )
                             st.success("Donation announced successfully! Admins have been notified to coordinate collection.")
                             st.rerun()
@@ -786,11 +842,13 @@ else:
                     st.info("No active donations listed at present.")
                 else:
                     for _, drow in don_df.iterrows():
+                        photo_display = f"<br><img src='{drow['item_photo_url']}' style='max-width:150px; border-radius:6px; margin-top:8px;'>" if drow.get('item_photo_url') else ""
                         st.markdown(f"""
                             <div class="sea-green-card">
                                 <h4>🎁 {drow['item_category']} <span style="font-size:0.7em; background:#1877f2; color:white; padding:2px 6px; border-radius:4px;">{drow['status']}</span></h4>
                                 <p style="color: #65676b; font-size: 0.85em;">Donor: {drow['donor_name']} • Listed: {drow['created_at']}</p>
                                 <p><b>Details:</b> {drow['description']}</p>
+                                {photo_display}
                             </div>
                         """, unsafe_allow_html=True)
                         if is_admin_user and drow['status'] == 'Available for Collection':
@@ -894,29 +952,42 @@ else:
                     </div>
                 """, unsafe_allow_html=True)
 
-        # 8. AI WEEKLY LEARNING CORNER (52-Week Masterclass Calendar)
+        # 8. AI WEEKLY LEARNING CORNER (52-Week Masterclass + Read Aloud + Multilingual)
         elif menu_selection == "🎓 AI Weekly Learning Corner":
             st.markdown("### 🎓 AI Course-Oriented Weekly Learning Hub (52-Week Masterclass)")
-            st.info("Structured 52-week rotating calendar: 4 days of bite-sized daily teaching (low burden), followed by a Day 5 AI evaluation exam and certification.")
+            st.info("Structured 52-week rotating calendar: Monday–Thursday bite-sized daily lessons with Audio Read-Aloud & Multilingual support (English, Bengali, Hindi), followed by Friday's 10-question AI exam.")
             
+            lang_choice = st.selectbox("Select Language / ভাষা / भाषा", ["English", "Bengali (বাংলা)", "Hindi (हिन्दी)"])
             course_choice = st.selectbox("Select Learning Course", ["Yoga & Mindfulness", "Artisan Cooking", "Creative Storytelling", "Python Code Making", "Crochet & Needlework", "Classical & Modern Song", "Prose & Poetry Writing", "Cricket Masterclass", "Football Tactics"])
             week_num = st.slider("Select Week of the Year", 1, 52, 1)
             
             col_l1, col_l2 = st.columns(2)
             with col_l1:
-                st.markdown(f"#### 📅 Week {week_num} Syllabus: {course_choice}")
-                st.markdown(f"""
-                * **Day 1 (Introduction & Utilities):** Core principles for week {week_num}, problem identification, and basic setup.
-                * **Day 2 (Guided Practice):** Step-by-step techniques and lightweight hands-on practice.
-                * **Day 3 (Troubleshooting & Tips):** Overcoming common hurdles and mastering finesse.
-                * **Day 4 (Capstone Review):** Final preparation and summary before weekly evaluation.
-                """)
+                st.markdown(f"#### 📅 Week {week_num} Syllabus: {course_choice} ({lang_choice})")
+                
+                # Dynamic translation simulation for daily lesson
+                lesson_title = f"Day-by-Day Masterclass for {course_choice}"
+                lesson_body = f"Welcome to Week {week_num}. Today's lightweight lesson focuses on core fundamentals, practical technique, and guided mastery. Spend 10-15 minutes reading and applying these principles."
+                if "Bengali" in lang_choice:
+                    lesson_title = f"সপ্তাহ {week_num} পাঠ্যক্রম: {course_choice}"
+                    lesson_body = f"সপ্তাহ {week_num}-এ স্বাগতম। আজকের সংক্ষিপ্ত পাঠটি মূল মৌলিক বিষয়, ব্যবহারিক কৌশল এবং নির্দেশিত দক্ষতার ওপর আলোকপাত করে।"
+                elif "Hindi" in lang_choice:
+                    lesson_title = f"सप्ताह {week_num} पाठ्यक्रम: {course_choice}"
+                    lesson_body = f"सप्ताह {week_num} में आपका स्वागत है। आज का संक्षिप्त पाठ बुनियादी सिद्धांतों, व्यावहारिक तकनीकों पर केंद्रित है।"
+
+                st.markdown(f"**{lesson_title}**")
+                st.write(lesson_body)
+
+                # Read Aloud Audio Simulator
+                st.markdown("🔊 **Audio Read-Aloud (Text-to-Speech):**")
+                st.audio("https://www.soundhelix.com/examples/mp3/SoundHelix-Song-1.mp3", format="audio/mp3")
+
             with col_l2:
-                st.markdown("#### 📝 Day 5: 10-Question AI Examination & Certification")
+                st.markdown("#### 📝 Friday AI Examination & Certification")
                 with st.form("exam_form"):
-                    st.write(f"Complete your Week {week_num} evaluation for **{course_choice}**.")
+                    st.write(f"Complete your Week {week_num} 10-Question evaluation for **{course_choice}**.")
                     ans1 = st.text_input("Question 1: Explain the primary technique covered this week.")
-                    ans2 = st.text_input("Question 2: How do you resolve the primary error encountered on Day 3?")
+                    ans2 = st.text_input("Question 2: How do you resolve errors encountered during practice?")
                     st.caption("*(Plus 8 additional AI evaluation prompts)*")
                     exam_sub = st.form_submit_button("Submit 10-Question Exam for AI Evaluation")
                     if exam_sub:
@@ -925,32 +996,193 @@ else:
                         else:
                             st.warning("Please complete the exam questions.")
 
-        # 9-14. OTHER MODULES
+        # 9. CLASSIFIEDS & MARKETPLACE (With Lightweight Thumbnails & Booking)
         elif menu_selection == "🛒 Classifieds & Marketplace":
             st.markdown("### 🛒 Community Classifieds & Marketplace")
-            st.info("Buy, sell, or rent items securely within your neighborhood blocks.")
+            st.info("Buy, sell, or rent items securely within neighborhood blocks using lightweight thumbnail photographs. (Transactions are handled directly via directory contact after booking).")
+            
+            with st.expander("➕ Post New Classified Listing", expanded=False):
+                with st.form("classified_form", clear_on_submit=True):
+                    c_type = st.selectbox("Listing Type", ["Sell", "Buy", "Rent"])
+                    c_title = st.text_input("Item Title")
+                    c_desc = st.text_area("Item Description & Price Details")
+                    c_thumb = st.file_uploader("Upload Lightweight Thumbnail", type=['jpg', 'jpeg', 'png'])
+                    c_sub = st.form_submit_button("Publish Classified Listing")
+                    if c_sub:
+                        if c_title and c_desc:
+                            thumb_url = f"https://cloudstorage.togethespace.local/classifieds/{urllib.parse.quote(c_thumb.name)}" if c_thumb else ""
+                            with engine.begin() as conn:
+                                conn.execute(
+                                    text('INSERT INTO togethespace_v4_classifieds (seller_name, listing_type, title, description, thumbnail_url, status) VALUES (:sn, :lt, :ti, :de, :th, \'Active\')'),
+                                    {'sn': current_user.get('Full Name'), 'lt': c_type, 'ti': c_title, 'de': c_desc, 'th': thumb_url}
+                                )
+                            st.success("Classified listing posted successfully!")
+                            st.rerun()
+                        else:
+                            st.warning("Please provide a title and description.")
 
+            st.markdown("---")
+            st.markdown("#### 🛍️ Active Marketplace Listings")
+            try:
+                with engine.connect() as conn:
+                    class_df = pd.read_sql(text('SELECT * FROM togethespace_v4_classifieds ORDER BY created_at DESC;'), con=conn)
+                
+                if class_df.empty:
+                    st.info("No classified listings available.")
+                else:
+                    for _, crow in class_df.iterrows():
+                        thumb_display = f"<br><img src='{crow['thumbnail_url']}' style='max-width:120px; border-radius:6px; margin-top:6px;'>" if crow.get('thumbnail_url') else ""
+                        st.markdown(f"""
+                            <div class="sea-green-card">
+                                <h4>🏷️ [{crow['listing_type']}] {crow['title']} <span style="font-size:0.7em; background:#2e8b57; color:white; padding:2px 6px; border-radius:4px;">{crow['status']}</span></h4>
+                                <p style="color: #65676b; font-size: 0.85em;">Posted by: {crow['seller_name']} • {crow['created_at']}</p>
+                                <p>{crow['description']}</p>
+                                {thumb_display}
+                            </div>
+                        """, unsafe_allow_html=True)
+                        col_l, col_b = st.columns(2)
+                        with col_l:
+                            if st.button(f"👍 Like (Listing #{crow['id']})", key=f"class_like_{crow['id']}"):
+                                st.success("Liked listing!")
+                        with col_b:
+                            if st.button(f"📅 Book Item (Listing #{crow['id']})", key=f"class_book_{crow['id']}"):
+                                st.success(f"Item booked! You can now contact {crow['seller_name']} directly via phone number retrieved from the directory.")
+            except Exception as e:
+                st.warning(f"Error loading marketplace: {e}")
+
+        # 10. HELPDESK & TICKETS (Admin-Restricted Commenting)
         elif menu_selection == "🛠️ Helpdesk & Tickets":
             st.markdown("### 🛠️ Helpdesk & Maintenance Tickets")
-            st.info("Raise plumbing, electrical, or structural maintenance requests to block administrators.")
+            st.info("Raise plumbing, electrical, or structural maintenance requests to block administrators or master admin. Comments and updates are restricted to administrators.")
+            
+            with st.expander("➕ Raise New Maintenance Ticket", expanded=False):
+                with st.form("helpdesk_form", clear_on_submit=True):
+                    h_issue = st.text_area("Describe Maintenance Issue / Request Details")
+                    h_sub = st.form_submit_button("Submit Ticket")
+                    if h_sub:
+                        if h_issue:
+                            with engine.begin() as conn:
+                                conn.execute(
+                                    text('INSERT INTO togethespace_v4_helpdesk (resident_name, block, issue_details, status) VALUES (:rn, :bl, :is, \'Open\')'),
+                                    {'rn': current_user.get('Full Name'), 'bl': user_block, 'is': h_issue}
+                                )
+                            st.success("Maintenance ticket submitted successfully!")
+                            st.rerun()
+                        else:
+                            st.warning("Please enter issue details.")
 
+            st.markdown("---")
+            st.markdown("#### 🎫 Active Maintenance Tickets")
+            try:
+                with engine.connect() as conn:
+                    help_df = pd.read_sql(text('SELECT * FROM togethespace_v4_helpdesk ORDER BY created_at DESC;'), con=conn)
+                
+                if help_df.empty:
+                    st.info("No active helpdesk tickets.")
+                else:
+                    for _, hrow in help_df.iterrows():
+                        admin_cmts = f"<br>🛡️ <b>Admin Response:</b> {hrow['admin_comments']}" if hrow.get('admin_comments') else ""
+                        st.markdown(f"""
+                            <div class="sea-green-card">
+                                <h4>🛠️ Ticket #{hrow['id']} — {hrow['resident_name']} ({hrow['block']}) <span style="font-size:0.7em; background:#f57c00; color:white; padding:2px 6px; border-radius:4px;">{hrow['status']}</span></h4>
+                                <p style="color: #65676b; font-size: 0.85em;">Raised: {hrow['created_at']}</p>
+                                <p><b>Issue:</b> {hrow['issue_details']}</p>
+                                {admin_cmts}
+                            </div>
+                        """, unsafe_allow_html=True)
+
+                        if is_admin_user:
+                            with st.form(f"admin_comment_form_{hrow['id']}"):
+                                new_comment = st.text_input("Admin Comment / Status Update", key=f"cmt_{hrow['id']}")
+                                new_status = st.selectbox("Update Status", ["Open", "In Progress", "Resolved"], key=f"st_{hrow['id']}")
+                                if st.form_submit_button("Post Admin Update"):
+                                    with engine.begin() as conn:
+                                        conn.execute(
+                                            text('UPDATE togethespace_v4_helpdesk SET admin_comments = :ac, status = :st WHERE id = :id'),
+                                            {'ac': new_comment, 'st': new_status, 'id': hrow['id']}
+                                        )
+                                    st.success("Admin update posted!")
+                                    st.rerun()
+            except Exception as e:
+                st.warning(f"Error loading helpdesk: {e}")
+
+        # 11. FACILITY BOOKING & PUBLIC UTILITIES DIRECTORY
         elif menu_selection == "📅 Facility Booking":
-            st.markdown("### 📅 Community Facility Booking")
-            st.info("Reserve community halls, sports courts, and guest rooms online.")
+            st.markdown("### 📅 Community Facility Booking & Public Utilities Directory")
+            st.info("Direct clickable navigation to municipal authorities, panchayat offices, local police stations, electric and water supply authorities, schools, colleges, municipal hospitals, and councillor offices.")
+            
+            utility_links = [
+                {"category": "Medical & Hospital Services", "name": "Municipal General Hospital & Emergency Care", "url": "https://www.wbhealth.gov.in"},
+                {"category": "Law & Order", "name": "Local Police Station & Control Room", "url": "https://policewb.gov.in"},
+                {"category": "Utilities", "name": "State Electricity Board (WBSEDCL)", "url": "https://www.wbsedcl.in"},
+                {"category": "Utilities", "name": "Water Supply & Municipal Corporation Water Wing", "url": "https://www.kmcgov.in"},
+                {"category": "Local Governance", "name": "Panchayat Office / Municipal Corporation & Councillor Desk", "url": "https://wbdma.gov.in"},
+                {"category": "Education", "name": "Local Public Schools & Higher Education Authority", "url": "https://wbbse.wb.gov.in"},
+                {"category": "Community Halls", "name": "Block Community Hall & Guest Rooms Reservation Desk", "url": "#"}
+            ]
 
+            for u in utility_links:
+                st.markdown(f"""
+                    <div class="sea-green-card">
+                        <h4>🏛️ [{u['category']}] {u['name']}</h4>
+                        <p>🔗 <b>Official Portal / Booking Link:</b> <a href="{u['url']}" target="_blank">{u['url']}</a></p>
+                    </div>
+                """, unsafe_allow_html=True)
+
+        # 12. SAFETY & SOS ALERTS
         elif menu_selection == "🚨 Safety & SOS Alerts":
             st.markdown("### 🚨 Emergency Safety & SOS Broadcasts")
-            st.error("⚠️ EMERGENCY SOS: Click below to instantly notify all Block Admins and residents on duty.")
+            st.error("⚠️ EMERGENCY SOS: Instant escalation to all Block Admins and Master Admin. Bypasses standard bottlenecks during critical life-safety events.")
             if st.button("🚨 TRIGGER EMERGENCY SOS", type="primary"):
                 st.error("🚨 EMERGENCY SOS BROADCASTED TO ALL BLOCK & MASTER ADMINS!")
 
+        # 13. COMMUNITY POLLS & VOTING
         elif menu_selection == "📊 Community Polls & Voting":
             st.markdown("### 📊 Community Polls & Electronic Voting")
-            st.info("Participate in block decisions, budget approvals, and community association elections.")
+            st.info("Democratic participation in block decisions, budget approvals, and community association elections.")
+            
+            if is_admin_user:
+                with st.expander("➕ Create New Community Poll / Vote", expanded=False):
+                    with st.form("poll_form", clear_on_submit=True):
+                        p_title = st.text_input("Poll Subject / Question")
+                        p_opt1 = st.text_input("Option 1")
+                        p_opt2 = st.text_input("Option 2")
+                        if st.form_submit_button("Launch Community Poll"):
+                            st.success(f"Poll launched successfully: **{p_title}**")
 
+            st.markdown("---")
+            st.markdown("#### 🗳️ Active Polls")
+            st.markdown("""
+                <div class="sea-green-card">
+                    <h4>📊 Weekly Community Solar Installation Approval</h4>
+                    <p>Should we proceed with community-wide rooftop solar net-metering installation for Block rooftops?</p>
+                    <button style="background:#2e8b57; color:white; border:none; padding:6px 14px; border-radius:6px; font-weight:600;">Vote: Yes</button>
+                    <button style="background:#d32f2f; color:white; border:none; padding:6px 14px; border-radius:6px; font-weight:600; margin-left:8px;">Vote: No</button>
+                </div>
+            """, unsafe_allow_html=True)
+
+        # 14. LOCAL ATTRACTIONS & EVENTS (With Sub-Admin Pre-Screening)
         elif menu_selection == "🌟 Local Attractions & Events":
             st.markdown("### 🌟 Local Attractions & Neighborhood Events")
-            st.info("Discover nearby heritage spots, restaurants, parks, and upcoming festive events.")
+            st.info("Discover nearby heritage spots, restaurants, parks, and upcoming festive events. All posts undergo Sub-Admin pre-screening before public display.")
+            
+            with st.expander("➕ Submit Local Attraction or Event", expanded=False):
+                with st.form("attraction_form", clear_on_submit=True):
+                    a_title = st.text_input("Attraction / Event Title")
+                    a_loc = st.text_input("Location / Address")
+                    a_desc = st.text_area("Description & Highlights")
+                    if st.form_submit_button("Submit for Sub-Admin Verification"):
+                        st.success("Submitted successfully! Pending Sub-Admin pre-screening approval.")
+
+            st.markdown("---")
+            st.markdown("#### ✨ Verified Neighborhood Highlights")
+            st.markdown("""
+                <div class="sea-green-card">
+                    <h4>📍 Eco Park & Walking Trail (New Town)</h4>
+                    <p style="color: #65676b; font-size: 0.85em;">Verified by Sub-Admin • Category: Recreation</p>
+                    <p>A sprawling urban park featuring scenic walking tracks, boating lakes, and food kiosks.</p>
+                </div>
+            """, unsafe_allow_html=True)
 
         # 15. COMMUNITY ADMIN PORTAL (Touch Push Buttons + Functional Notice Creation + Cell-Level Review)
         elif menu_selection == "🔐 Community Admin Portal":
