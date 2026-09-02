@@ -492,7 +492,7 @@ else:
             except Exception as e:
                 st.warning(f'Chat loading error: {e}')
 
-        # 5. SOCIAL CHANNELS TAB (Fully Restored with all 6 channels)
+        # 5. SOCIAL CHANNELS TAB
         with tab_social:
             st.markdown('### 🌐 Specific Social Media & Communication Channels')
             col_s1, col_s2 = st.columns(2)
@@ -533,7 +533,7 @@ else:
                     </div>
                 """, unsafe_allow_html=True)
 
-        # 6. RESIDENT PORTAL TAB (Fully Restored Profile & Password Change Requests with Audit Logs)
+        # 6. RESIDENT PORTAL TAB
         with tab_resident:
             r = st.session_state['user_record']
             st.markdown(f"### 👤 Resident Profile: {r.get('Full Name')}")
@@ -550,10 +550,10 @@ else:
             """, unsafe_allow_html=True)
 
             if not st.session_state.get('is_admin_session'):
-                st.markdown('#### 🔑 Request Password Change')
+                st.markdown(f'#### 🔑 Request Password Change to Block Admin ({r.get("Organization")})')
                 with st.form('resident_pwd_req_form'):
                     new_r_pwd = st.text_input('New Desired Password', type='password')
-                    req_submit = st.form_submit_button('Submit Password Change Request')
+                    req_submit = st.form_submit_button(f'Submit Request to {r.get("Organization")} Admin')
                     if req_submit:
                         if new_r_pwd:
                             hashed_new_pwd = hash_password(new_r_pwd)
@@ -575,14 +575,17 @@ else:
                                         'by': r.get('Full Name'),
                                         'target': str(r.get('User ID')),
                                         'action': 'Password Change Request',
-                                        'details': f'Password change request submitted by resident {r.get("Full Name")} for block {r.get("Organization")}.'
+                                        'details': f'Password change request submitted by resident {r.get("Full Name")} to {r.get("Organization")} Block Admin.'
                                     }
                                 )
-                            st.success('Password change request submitted successfully to your Block Admin for approval, and log recorded!')
+                            st.success(f'Password change request sent to your {r.get("Organization")} Block Admin for approval, and log recorded!')
                         else:
                             st.warning('Please enter a new password.')
             else:
-                st.info('ℹ️ You are currently logged in as an Administrator. Use the Admin Portal tab for full administrative controls and audit logs.')
+                if is_master:
+                    st.info('👑 You are logged in as Master Admin. Use the Admin Portal tab to directly change any password without a request, or manage incoming Block Admin requests.')
+                else:
+                    st.info('ℹ️ You are logged in as a Block Admin. Go to the Admin Portal tab to approve resident requests and to submit your own password change request to the Master Admin.')
 
         # 7. ADMIN PORTAL TAB
         with tab_admin:
@@ -621,7 +624,8 @@ else:
                     '➕ Add Member',
                     '✏️ Edit Member',
                     '❌ Delete Member',
-                    '🔑 Password Requests',
+                    '🔑 Password Requests & Approvals',
+                    '⚡ Direct Password Override (Master Only)',
                     '📋 Audit Logs',
                     '📥 Export Credentials CSV'
                 ], horizontal=True)
@@ -854,31 +858,115 @@ else:
                                     st.success(f'Member ID {d_id} deleted successfully.')
                                     st.rerun()
 
-                # 7. PASSWORD REQUESTS
-                elif admin_action == '🔑 Password Requests':
-                    st.markdown('#### 🔑 Resident Password Requests')
-                    try:
-                        with engine.connect() as conn:
-                            if admin_block == 'Master Admin':
-                                req_df = pd.read_sql(text('SELECT * FROM togethespace_v4_password_requests WHERE status = \'Pending\' ORDER BY created_at DESC;'), con=conn)
-                            else:
-                                req_df = pd.read_sql(text('SELECT * FROM togethespace_v4_password_requests WHERE block = :block AND status = \'Pending\' ORDER BY created_at DESC;'), con=conn, params={'block': admin_block})
+                # 7. PASSWORD REQUESTS & APPROVALS WORKFLOW
+                elif admin_action == '🔑 Password Requests & Approvals':
+                    if admin_block == 'Master Admin':
+                        st.markdown('### 👑 Master Admin: Manage Block Admin Requests & Self-Requests')
                         
-                        if req_df.empty:
-                            st.info('No pending password requests.')
-                        else:
-                            for idx, req in req_df.iterrows():
-                                st.markdown(f"""
-                                    <div class="admin-card">
-                                        <b>Request ID:</b> {req['id']} | <b>Block:</b> {req['block']} | <b>Requested By:</b> {req['requested_by']}<br>
-                                        <b>Target:</b> {req['target_name']} (ID: {req['target_userid']}) | <b>Date:</b> {req['created_at']}
-                                    </div>
-                                """, unsafe_allow_html=True)
-                                
-                                if admin_block == 'Master Admin':
-                                    col_app, col_rej = st.columns(2)
-                                    with col_app:
-                                        if st.button(f'✅ Approve #{req["id"]}', key=f'app_{req["id"]}'):
+                        # Master Admin Self-Request option
+                        with st.expander('➕ Request Password Change for Master Admin (Self-Request)', expanded=False):
+                            with st.form('master_self_req_form'):
+                                m_req_pwd = st.text_input('New Desired Master Password', type='password')
+                                m_req_sub = st.form_submit_button('Submit Self-Request')
+                                if m_req_sub:
+                                    if m_req_pwd:
+                                        hashed_m_req = hash_password(m_req_pwd)
+                                        with engine.begin() as conn:
+                                            conn.execute(
+                                                text('INSERT INTO togethespace_v4_password_requests (requested_by, target_userid, target_name, block, new_password, status) VALUES (:by, :target, :name, :block, :pwd, :status)'),
+                                                {
+                                                    'by': 'Master Admin',
+                                                    'target': 'master_admin',
+                                                    'name': 'Master Administrator',
+                                                    'block': 'All Blocks',
+                                                    'pwd': hashed_m_req,
+                                                    'status': 'Pending'
+                                                }
+                                            )
+                                            conn.execute(
+                                                text('INSERT INTO togethespace_v4_password_logs (changed_by, target_userid, action_type, details) VALUES (:by, :target, :action, :details)'),
+                                                {
+                                                    'by': 'Master Admin',
+                                                    'target': 'master_admin',
+                                                    'action': 'Master Self-Request',
+                                                    'details': 'Master Admin submitted a password change request for self.'
+                                                }
+                                            )
+                                        st.success('Master Admin self-request submitted successfully!')
+                                    else:
+                                        st.warning('Please enter a password.')
+
+                        st.markdown('#### Pending Requests from Block Admins & Master Self-Requests')
+                        try:
+                            with engine.connect() as conn:
+                                master_req_df = pd.read_sql(text('SELECT * FROM togethespace_v4_password_requests WHERE status = \'Pending\' AND (requested_by LIKE \'Block Admin:%\' OR requested_by = \'Master Admin\') ORDER BY created_at DESC;'), con=conn)
+                            
+                            if master_req_df.empty:
+                                st.info('No pending requests from block admins or master admin.')
+                            else:
+                                for idx, req in master_req_df.iterrows():
+                                    st.markdown(f"""
+                                        <div class="admin-card">
+                                            <b>Request ID:</b> {req['id']} | <b>Requested By:</b> {req['requested_by']} | <b>Target:</b> {req['target_name']}<br>
+                                            <b>Date:</b> {req['created_at']}
+                                        </div>
+                                    """, unsafe_allow_html=True)
+                                    col_app_m, col_rej_m = st.columns(2)
+                                    with col_app_m:
+                                        if st.button(f'✅ Approve Request #{req["id"]}', key=f'app_m_{req["id"]}'):
+                                            with engine.begin() as conn:
+                                                if req['target_userid'] == 'master_admin':
+                                                    # For actual master credentials or system passcode
+                                                    pass
+                                                else:
+                                                    conn.execute(
+                                                        text('UPDATE togethespace_v4_directory SET "Password" = :pwd WHERE "User ID" = :uid OR "Full Name" = :name'),
+                                                        {'pwd': req['new_password'], 'uid': req['target_userid'], 'name': req['target_name']}
+                                                    )
+                                                conn.execute(
+                                                    text('UPDATE togethespace_v4_password_requests SET status = \'Approved\' WHERE id = :id'),
+                                                    {'id': req['id']}
+                                                )
+                                                conn.execute(
+                                                    text('INSERT INTO togethespace_v4_password_logs (changed_by, target_userid, action_type, details) VALUES (:by, :target, :action, :details)'),
+                                                    {'by': 'Master Admin', 'target': req['target_userid'], 'action': 'Approved Block Admin Request', 'details': f'Master Admin approved request #{req["id"]} for {req["target_name"]}.'}
+                                                )
+                                            st.success(f'Request #{req["id"]} approved successfully!')
+                                            st.rerun()
+                                    with col_rej_m:
+                                        if st.button(f'❌ Reject Request #{req["id"]}', key=f'rej_m_{req["id"]}'):
+                                            with engine.begin() as conn:
+                                                conn.execute(
+                                                    text('UPDATE togethespace_v4_password_requests SET status = \'Rejected\' WHERE id = :id'),
+                                                    {'id': req['id']}
+                                                )
+                                            st.warning(f'Request #{req["id"]} rejected.')
+                                            st.rerun()
+                        except Exception as e:
+                            st.warning(f'Error loading master admin requests: {e}')
+
+                    else:
+                        st.markdown(f'### 🏢 Block Admin ({admin_block}): Resident Requests & Send Request to Master Admin')
+                        
+                        # 1. Approve/Reject Resident Requests for this block
+                        st.markdown('#### Pending Resident Password Requests (Approve/Reject)')
+                        try:
+                            with engine.connect() as conn:
+                                res_req_df = pd.read_sql(text('SELECT * FROM togethespace_v4_password_requests WHERE block = :block AND status = \'Pending\' AND requested_by LIKE \'Resident:%\' ORDER BY created_at DESC;'), con=conn, params={'block': admin_block})
+                            
+                            if res_req_df.empty:
+                                st.info('No pending resident requests in your block.')
+                            else:
+                                for idx, req in res_req_df.iterrows():
+                                    st.markdown(f"""
+                                        <div class="admin-card">
+                                            <b>Request ID:</b> {req['id']} | <b>Resident:</b> {req['requested_by']} | <b>Target ID:</b> {req['target_userid']}<br>
+                                            <b>Date:</b> {req['created_at']}
+                                        </div>
+                                    """, unsafe_allow_html=True)
+                                    col_ar, col_rr = st.columns(2)
+                                    with col_ar:
+                                        if st.button(f'✅ Approve Resident Request #{req["id"]}', key=f'app_res_{req["id"]}'):
                                             with engine.begin() as conn:
                                                 conn.execute(
                                                     text('UPDATE togethespace_v4_directory SET "Password" = :pwd WHERE "User ID" = :uid OR "Full Name" = :name'),
@@ -890,23 +978,104 @@ else:
                                                 )
                                                 conn.execute(
                                                     text('INSERT INTO togethespace_v4_password_logs (changed_by, target_userid, action_type, details) VALUES (:by, :target, :action, :details)'),
-                                                    {'by': f'Master Admin (Approved {req["requested_by"]})', 'target': req['target_userid'], 'action': 'Approved Password Request', 'details': f'Approved request for {req["target_name"]}.'}
+                                                    {'by': f'Block Admin ({admin_block})', 'target': req['target_userid'], 'action': 'Approved Resident Password Request', 'details': f'Block Admin approved password request for {req["target_name"]}.'}
                                                 )
-                                            st.success(f'Request #{req["id"]} approved and password updated securely!')
+                                            st.success(f'Resident request #{req["id"]} approved and password updated!')
                                             st.rerun()
-                                    with col_rej:
-                                        if st.button(f'❌ Reject #{req["id"]}', key=f'rej_{req["id"]}'):
+                                    with col_rr:
+                                        if st.button(f'❌ Reject Resident Request #{req["id"]}', key=f'rej_res_{req["id"]}'):
                                             with engine.begin() as conn:
                                                 conn.execute(
                                                     text('UPDATE togethespace_v4_password_requests SET status = \'Rejected\' WHERE id = :id'),
                                                     {'id': req['id']}
                                                 )
-                                            st.warning(f'Request #{req["id"]} rejected.')
+                                            st.warning(f'Resident request #{req["id"]} rejected.')
                                             st.rerun()
-                    except Exception as e:
-                        st.warning(f'Could not load requests: {e}')
+                        except Exception as e:
+                            st.warning(f'Error loading resident requests: {e}')
 
-                # 8. AUDIT LOGS
+                        st.markdown('---')
+                        # 2. Send Block Admin Password Request to Master Admin
+                        st.markdown('#### 🚀 Send Password Change Request to Master Admin')
+                        with st.form('block_admin_to_master_form'):
+                            ba_new_p = st.text_input('New Password for Block Admin', type='password')
+                            ba_req_sub = st.form_submit_button('Submit Password Request to Master Admin')
+                            if ba_req_sub:
+                                if ba_new_p:
+                                    hashed_ba_p = hash_password(ba_new_p)
+                                    with engine.begin() as conn:
+                                        conn.execute(
+                                            text('INSERT INTO togethespace_v4_password_requests (requested_by, target_userid, target_name, block, new_password, status) VALUES (:by, :target, :name, :block, :pwd, :status)'),
+                                            {
+                                                'by': f'Block Admin: {admin_block}',
+                                                'target': admin_block.lower().replace(' ', '_'),
+                                                'name': f'{admin_block} Administrator',
+                                                'block': admin_block,
+                                                'pwd': hashed_ba_p,
+                                                'status': 'Pending'
+                                            }
+                                        )
+                                        conn.execute(
+                                            text('INSERT INTO togethespace_v4_password_logs (changed_by, target_userid, action_type, details) VALUES (:by, :target, :action, :details)'),
+                                            {
+                                                'by': f'{admin_block} Admin',
+                                                'target': admin_block.lower().replace(' ', '_'),
+                                                'action': 'Sent Password Request to Master Admin',
+                                                'details': f'Block Admin for {admin_block} submitted password change request to Master Admin.'
+                                            }
+                                        )
+                                    st.success('Password change request successfully sent to Master Admin!')
+                                else:
+                                    st.warning('Please enter a password.')
+
+                # 8. DIRECT PASSWORD OVERRIDE (Master Only - Can change any password without request)
+                elif admin_action == '⚡ Direct Password Override (Master Only)':
+                    if admin_block == 'Master Admin':
+                        st.markdown('### ⚡ Master Admin: Direct Password Override (No Request Needed)')
+                        st.info('👑 As Master Admin, you can select any user or block admin and update their password immediately without waiting for approval requests.')
+                        
+                        try:
+                            with engine.connect() as conn:
+                                all_users_df = pd.read_sql(text('SELECT id, "User ID", "Full Name", "Organization" FROM togethespace_v4_directory ORDER BY "Full Name" ASC;'), con=conn)
+                            
+                            if all_users_df.empty:
+                                st.warning('No users found in directory.')
+                            else:
+                                override_choice = st.selectbox('Select User to Directly Override Password', all_users_df.apply(lambda r: f"ID {r['id']} — {r['Full Name']} ({r['Organization']} / {r['User ID']})", axis=1))
+                                
+                                with st.form('master_direct_override_form'):
+                                    new_override_pwd = st.text_input('New Password Override', type='password')
+                                    override_sub = st.form_submit_button('Apply Direct Password Override')
+                                    
+                                    if override_sub:
+                                        if override_choice and new_override_pwd:
+                                            target_db_id = int(override_choice.split(' — ')[0].replace('ID ', ''))
+                                            final_override_hash = hash_password(new_override_pwd)
+                                            
+                                            with engine.begin() as conn:
+                                                conn.execute(
+                                                    text('UPDATE togethespace_v4_directory SET "Password" = :pwd WHERE id = :id'),
+                                                    {'pwd': final_override_hash, 'id': target_db_id}
+                                                )
+                                                conn.execute(
+                                                    text('INSERT INTO togethespace_v4_password_logs (changed_by, target_userid, action_type, details) VALUES (:by, :target, :action, :details)'),
+                                                    {
+                                                        'by': 'Master Admin',
+                                                        'target': str(target_db_id),
+                                                        'action': 'Direct Password Override',
+                                                        'details': f'Master Admin directly changed password for user record ID {target_db_id} without request.'
+                                                    }
+                                                )
+                                            st.success(f'Password successfully overridden and updated for user ID {target_db_id} without request!')
+                                            st.rerun()
+                                        else:
+                                            st.warning('Please provide a new password.')
+                        except Exception as e:
+                            st.warning(f'Error loading users for override: {e}')
+                    else:
+                        st.error('❌ Access Denied: Direct Password Override is restricted exclusively to the Master Admin.')
+
+                # 9. AUDIT LOGS
                 elif admin_action == '📋 Audit Logs':
                     st.markdown('#### 📜 Password Change & Login Audit Logs')
                     try:
@@ -920,7 +1089,7 @@ else:
                     except Exception as e:
                         st.info('Audit log table will populate once logins or password changes are processed.')
 
-                # 9. EXPORT CREDENTIALS CSV
+                # 10. EXPORT CREDENTIALS CSV
                 elif admin_action == '📥 Export Credentials CSV':
                     st.markdown('#### 📥 Download Credentials Export')
                     st.info('Note: Passwords are securely hashed. The CSV export displays hashed security strings for account protection.')
