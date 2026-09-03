@@ -10,8 +10,6 @@ from datetime import datetime, timedelta
 from PIL import Image
 import numpy as np
 import io
-import os
-import temp5sec_utils if False else None
 
 st.set_page_config(
     page_title='TogetheSpace v0.4 — Heritage High-Concurrency Edition',
@@ -492,21 +490,6 @@ else:
             }
         }
 
-        # --- QUERY PARAMS PAGE ROUTING SYNC FOR ACCESSIBILITY / GESTURES ---
-        if 'page' in st.query_params:
-            p_val = st.query_params['page']
-            valid_pages = [
-                "🧭 Facility & Service Index", "🎙️ Sign Language & Voice Hub", "📋 Resident Directory",
-                "🏡 Communication & Feed", "🎥 Media Corner", "🤝 Donation & Give-Away",
-                "💖 Admin Thanks & Support", "📈 West Bengal Market Rates (AI)", "📰 AI Top News Corner",
-                "🎓 AI Weekly Learning Corner", "🛒 Classifieds & Marketplace (Auction)",
-                "👔 Job Match & Employment Directory", "✉️ Personalized Event Invitations",
-                "🛠️ Helpdesk & Tickets", "📅 Facility Booking & Utilities", "🚨 Safety & SOS Alerts",
-                "📊 Community Polls & Voting", "🌟 Local Attractions & Events", "🔐 Community Admin Portal"
-            ]
-            if p_val in valid_pages:
-                st.session_state['current_page'] = p_val
-
         # --- AUTHENTICATION GATE ---
         if 'authenticated' not in st.session_state:
             st.session_state['authenticated'] = False
@@ -849,7 +832,7 @@ else:
             col_s1, col_s2 = st.columns(2)
 
             with col_s1:
-                st.markdown("#### 🗣️ Voice Command Navigation & Local Permission Check")
+                st.markdown("#### 🗣️ Voice Command Navigation & Permission")
                 audio_permission_granted = st.checkbox("🔒 Authorize Local Microphone Permission on this page", value=False, key="audio_perm_page")
                 
                 if audio_permission_granted:
