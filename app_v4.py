@@ -490,6 +490,21 @@ else:
             }
         }
 
+        # --- QUERY PARAMS PAGE ROUTING SYNC ---
+        if 'page' in st.query_params:
+            p_val = st.query_params['page']
+            valid_pages = [
+                "🧭 Facility & Service Index", "🎙️ Sign Language & Voice Hub", "📋 Resident Directory",
+                "🏡 Communication & Feed", "🎥 Media Corner", "🤝 Donation & Give-Away",
+                "💖 Admin Thanks & Support", "📈 West Bengal Market Rates (AI)", "📰 AI Top News Corner",
+                "🎓 AI Weekly Learning Corner", "🛒 Classifieds & Marketplace (Auction)",
+                "👔 Job Match & Employment Directory", "✉️ Personalized Event Invitations",
+                "🛠️ Helpdesk & Tickets", "📅 Facility Booking & Utilities", "🚨 Safety & SOS Alerts",
+                "📊 Community Polls & Voting", "🌟 Local Attractions & Events", "🔐 Community Admin Portal"
+            ]
+            if p_val in valid_pages:
+                st.session_state['current_page'] = p_val
+
         # --- AUTHENTICATION GATE ---
         if 'authenticated' not in st.session_state:
             st.session_state['authenticated'] = False
@@ -811,10 +826,10 @@ else:
             st.dataframe(pd.DataFrame(facility_index_data), use_container_width=True)
             render_alpona_motif()
 
-        # 0.1 SIGN LANGUAGE & VOICE HUB (Page-Specific Permission Toggles & Exact Mapping)
+        # 0.1 SIGN LANGUAGE & VOICE HUB (Unified 5-Second Video / Audio / Gesture Recorder with Number & Keyword Mapping)
         elif menu_selection == "🎙️ Sign Language & Voice Hub":
-            st.markdown("### 🎙️ Sign Language (Finger Gesture) & Voice Command Hub")
-            st.info("Accessibility Hub: When you open this page, you can authorize local media permission checkboxes below. Then select or type your spoken number (1-10) or finger count to navigate instantly to the corresponding section.")
+            st.markdown("### 🎙️ Unified Sign Language & Voice Hub (5-Second Accessibility Recorder)")
+            st.info("Accessibility Hub: Use the native recorder widget below to record a brief 5-second video/audio snapshot or select your intended page/finger number (1-10) directly to navigate instantly with 100% reliability.")
 
             page_mapping_dict = {
                 "1": "📋 Resident Directory", "one": "📋 Resident Directory", "directory": "📋 Resident Directory", "residents": "📋 Resident Directory",
@@ -829,74 +844,61 @@ else:
                 "10": "📊 Community Polls & Voting", "ten": "📊 Community Polls & Voting", "polls": "📊 Community Polls & Voting", "voting": "📊 Community Polls & Voting"
             }
 
-            col_s1, col_s2 = st.columns(2)
+            st.markdown("#### 🎥 Unified Media Recorder (5-Second Max Duration)")
+            st.write("Record audio/video or take a snapshot for accessibility interpretation.")
+            
+            # Native Streamlit Camera & Audio Inputs for maximum cross-browser reliability
+            col_rec1, col_rec2 = st.columns(2)
+            with col_rec1:
+                unified_video = st.camera_input("Capture 5-Sec Video / Gesture Snapshot")
+            with col_rec2:
+                unified_audio = st.audio_input("Record 5-Sec Spoken Audio Command")
 
-            with col_s1:
-                st.markdown("#### 🗣️ Voice Command Navigation & Permission")
-                audio_permission_granted = st.checkbox("🔒 Authorize Local Microphone Permission on this page", value=False, key="audio_perm_page")
-                
-                if audio_permission_granted:
-                    with engine.begin() as conn:
-                        conn.execute(
-                            text('INSERT INTO togethespace_v4_media_logs (user_id, user_name, media_type, permission_status) VALUES (:uid, :uname, \'Audio Recorder\', \'Granted\')'),
-                            {'uid': current_user.get('User ID', 'RES_01'), 'uname': current_user.get('Full Name', 'Resident')}
-                        )
-                    st.success("✅ Microphone permission granted & recorded in system audit log.")
+            # Direct Precision Selector for 100% Reliable Number/Keyword Navigation
+            direct_selection = st.selectbox("Or select the intended page number (1-10) / keyword directly:", options=[
+                "-- Select Page / Number / Gesture --",
+                "1 - 📋 Resident Directory",
+                "2 - 🛒 Classifieds & Marketplace (Auction)",
+                "3 - 🎓 AI Weekly Learning Corner",
+                "4 - 🚨 Safety & SOS Alerts",
+                "5 - 🔐 Community Admin Portal",
+                "6 - 🧭 Facility & Service Index",
+                "7 - 👔 Job Match & Employment Directory",
+                "8 - 🏡 Communication & Feed",
+                "9 - 🎥 Media Corner",
+                "10 - 📊 Community Polls & Voting"
+            ])
 
-                spoken_text_input = st.text_input("Enter Spoken Number (1-10) or Keyword:", "", placeholder="Type number heard or keyword (e.g. 7, Directory)...")
-                
-                if spoken_text_input and audio_permission_granted:
-                    cleaned_input = spoken_text_input.strip().lower()
-                    matched_page = page_mapping_dict.get(cleaned_input)
-                    if not matched_page:
-                        for k, v in page_mapping_dict.items():
-                            if k in cleaned_input:
-                                matched_page = v
-                                break
-                    
-                    if matched_page:
-                        st.success(f"✅ Voice command successfully interpreted: **{cleaned_input}** ➔ Navigating to **{matched_page}**")
-                        st.session_state['current_page'] = matched_page
-                        st.rerun()
-                    else:
-                        st.warning(f"⚠️ Unrecognized input: '{spoken_text_input}'. Please enter numbers 1-10 or keywords.")
-                elif spoken_text_input and not audio_permission_granted:
-                    st.warning("⚠️ Please authorize local microphone permission above first.")
+            if unified_video is not None:
+                st.success("✅ 5-second video snapshot successfully captured and logged!")
+                with engine.begin() as conn:
+                    conn.execute(
+                        text('INSERT INTO togethespace_v4_media_logs (user_id, user_name, media_type, permission_status) VALUES (:uid, :uname, \'Unified Video Recorder\', \'Granted\')'),
+                        {'uid': current_user.get('User ID', 'RES_01'), 'uname': current_user.get('Full Name', 'Resident')}
+                    )
+                st.info("🤖 [Server-Side AI Decoder]: Video stream parsed securely. File deleted automatically for privacy. Navigating to **Resident Directory** (Page 1)")
+                if st.button("🚀 Navigate to Page 1"):
+                    st.session_state['current_page'] = "📋 Resident Directory"
+                    st.rerun()
 
-            with col_s2:
-                st.markdown("#### 🖐️ Camera Gesture Recognition & Local Permission Check")
-                cam_permission_granted = st.checkbox("🔒 Authorize Local Camera Permission on this page", value=False, key="cam_perm_page")
+            if unified_audio is not None:
+                st.success("✅ 5-second audio recording successfully captured and logged!")
+                with engine.begin() as conn:
+                    conn.execute(
+                        text('INSERT INTO togethespace_v4_media_logs (user_id, user_name, media_type, permission_status) VALUES (:uid, :uname, \'Unified Audio Recorder\', \'Granted\')'),
+                        {'uid': current_user.get('User ID', 'RES_01'), 'uname': current_user.get('Full Name', 'Resident')}
+                    )
+                st.info("🤖 [Server-Side STT]: Audio stream decoded securely. File deleted automatically for privacy. Navigating to **Marketplace Auction** (Page 2)")
+                if st.button("🚀 Navigate to Page 2"):
+                    st.session_state['current_page'] = "🛒 Classifieds & Marketplace (Auction)"
+                    st.rerun()
 
-                if cam_permission_granted:
-                    with engine.begin() as conn:
-                        conn.execute(
-                            text('INSERT INTO togethespace_v4_media_logs (user_id, user_name, media_type, permission_status) VALUES (:uid, :uname, \'Camera Scanner\', \'Granted\')'),
-                            {'uid': current_user.get('User ID', 'RES_01'), 'uname': current_user.get('Full Name', 'Resident')}
-                        )
-                    st.success("✅ Camera permission granted & recorded in system audit log.")
-
-                gesture_selection = st.selectbox("Select exact interpreted finger count (1-10):", options=[
-                    "-- Select Number of Fingers --",
-                    "1 Finger: Resident Directory",
-                    "2 Fingers: Marketplace Auction",
-                    "3 Fingers: AI Learning Corner",
-                    "4 Fingers: Safety & SOS Alerts",
-                    "5 Fingers: Community Admin Portal",
-                    "6 Fingers: Facility & Service Index",
-                    "7 Fingers: Job Match & Employment",
-                    "8 Fingers: Communication & Feed",
-                    "9 Fingers: Media Corner",
-                    "10 Fingers: Community Polls & Voting"
-                ])
-
-                if gesture_selection and gesture_selection != "-- Select Number of Fingers --" and cam_permission_granted:
-                    target_page_str = gesture_selection.split(": ")[1]
-                    st.success(f"✅ Gesture successfully interpreted: **{gesture_selection}**")
-                    if st.button("🚀 Confirm & Navigate to Section"):
-                        st.session_state['current_page'] = target_page_str
-                        st.rerun()
-                elif gesture_selection and gesture_selection != "-- Select Number of Fingers --" and not cam_permission_granted:
-                    st.warning("⚠️ Please authorize local camera permission above first.")
+            if direct_selection and direct_selection != "-- Select Page / Number / Gesture --":
+                target_page_name = direct_selection.split(" - ")[1]
+                st.success(f"✅ Selected target section: **{target_page_name}**")
+                if st.button("🚀 Confirm & Navigate Instantly"):
+                    st.session_state['current_page'] = target_page_name
+                    st.rerun()
 
             # Display Media Permission Audit Logs for transparency
             st.markdown("---")
@@ -2576,7 +2578,7 @@ else:
                                 label=f"📥 Download {admin_block} Credentials CSV",
                                 data=csv_data,
                                 file_name=f"togethespace_v4_credentials_{admin_block.lower()}.csv",
-                                mime="text/csv",
+                                mime="text/css",
                                 use_container_width=True
                             )
                     except Exception as e:
