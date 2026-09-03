@@ -597,7 +597,7 @@ else:
         # --- HERITAGE WELCOME BANNER DISPLAYED ON LANDING ---
         st.markdown("""
             <div class="heritage-banner">
-                <p class="artisan-title" style="margin: 0; font-size: 2.4em;">বিনাম্র শ্রদ্ধার্ঘ্য: শ্রী শ্রী রামকৃষ্ণ পরমহংসদেব ও শ্রী শ্রী মা সারদা দেবী</p>
+                <p class="artisan-title" style="margin: 0; font-size: 2.4em;">বিনম্র শ্রদ্ধার্ঘ্য: শ্রী শ্রী রামকৃষ্ণ পরমহংসদেব ও শ্রী শ্রী মা সারদা দেবী</p>
                 <p style="font-size: 0.95em; color: #2e5a27; margin-top: 5px; font-weight: 600;">
                     বাংলার আবহমান সংস্কৃতি, ঐতিহ্য ও আত্মিক ঐক্যের ডিজিটাল অঙ্গন — TogetheSpace v0.4 (Heritage Edition)
                 </p>
