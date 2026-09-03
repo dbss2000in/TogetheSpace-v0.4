@@ -811,10 +811,10 @@ else:
             st.dataframe(pd.DataFrame(facility_index_data), use_container_width=True)
             render_alpona_motif()
 
-        # 0.1 SIGN LANGUAGE & VOICE HUB (Unified Precision Number Mapping with Instant Accuracy Selector)
+        # 0.1 SIGN LANGUAGE & VOICE HUB (Restored Native Audio & Camera Recording Widgets with Exact Mapping)
         elif menu_selection == "🎙️ Sign Language & Voice Hub":
             st.markdown("### 🎙️ Sign Language (Finger Gesture) & Voice Command Hub")
-            st.info("Accessibility Hub: Use the precise 1-10 selector below to map your recorded voice command or gesture count (1-10) directly to the correct page with 100% precision.")
+            st.info("Accessibility Hub: Use the native audio recorder and camera snapshot widgets below. Grant permissions when prompted to record your voice or gesture, then select or interpret the exact number (1-10) to navigate instantly.")
 
             page_mapping_dict = {
                 "1": "📋 Resident Directory",
@@ -829,11 +829,45 @@ else:
                 "10": "📊 Community Polls & Voting"
             }
 
-            st.markdown("#### 🎯 Precise 1-10 Section Navigation (Audio & Gesture Interpreter)")
-            st.write("Match your spoken number or shown finger count (1 to 10) directly to the exact target section:")
+            col_rec1, col_rec2 = st.columns(2)
 
-            selected_number_input = st.selectbox("Select Interpreted Number / Finger Count / Keyword (1-10):", options=[
-                "-- Select Number (1-10) --",
+            with col_rec1:
+                st.markdown("#### 🗣️ 1. Native Audio Voice Recording")
+                audio_perm = st.checkbox("🔒 Enable Microphone Access", value=False, key="audio_perm_box")
+                if audio_perm:
+                    with engine.begin() as conn:
+                        conn.execute(
+                            text('INSERT INTO togethespace_v4_media_logs (user_id, user_name, media_type, permission_status) VALUES (:uid, :uname, \'Audio Recorder\', \'Granted\')'),
+                            {'uid': current_user.get('User ID', 'RES_01'), 'uname': current_user.get('Full Name', 'Resident')}
+                        )
+                
+                audio_recording = st.audio_input("Record Spoken Number (1-10) or Keyword")
+                if audio_recording is not None and audio_perm:
+                    st.success("🎙️ Audio recording successfully captured!")
+                    st.audio(audio_recording)
+
+            with col_rec2:
+                st.markdown("#### 📷 2. Native Camera Snapshot Recording")
+                cam_perm = st.checkbox("🔒 Enable Camera Access", value=False, key="cam_perm_box")
+                if cam_perm:
+                    with engine.begin() as conn:
+                        conn.execute(
+                            text('INSERT INTO togethespace_v4_media_logs (user_id, user_name, media_type, permission_status) VALUES (:uid, :uname, \'Camera Snapshot\', \'Granted\')'),
+                            {'uid': current_user.get('User ID', 'RES_01'), 'uname': current_user.get('Full Name', 'Resident')}
+                        )
+
+                camera_snapshot = st.camera_input("Capture Finger Gesture Snapshot")
+                if camera_snapshot is not None and cam_perm:
+                    st.success("📸 Gesture snapshot successfully captured!")
+                    snap_img = Image.open(camera_snapshot)
+                    st.image(snap_img, width=200, caption="Captured Gesture Frame")
+
+            st.markdown("---")
+            st.markdown("#### 🧭 3. Direct Section Interpretation & Navigation Bar")
+            st.write("Select the exact number or section interpreted from your recording (1-10):")
+            
+            interpretation_choice = st.selectbox("Select Interpreted Number / Section (1-10):", options=[
+                "-- Select Interpreted Number --",
                 "1 - 📋 Resident Directory",
                 "2 - 🛒 Classifieds & Marketplace (Auction)",
                 "3 - 🎓 AI Weekly Learning Corner",
@@ -846,29 +880,21 @@ else:
                 "10 - 📊 Community Polls & Voting"
             ])
 
-            if selected_number_input and selected_number_input != "-- Select Number (1-10) --":
-                target_page_name = selected_number_input.split(" - ")[1]
-                st.success(f"✅ Interpreted correctly: **{selected_number_input}** ➔ **{target_page_name}**")
-                
-                # Log permission & navigation in audit trail
-                with engine.begin() as conn:
-                    conn.execute(
-                        text('INSERT INTO togethespace_v4_media_logs (user_id, user_name, media_type, permission_status) VALUES (:uid, :uname, \'Precise 1-10 Interpreter\', \'Granted\')'),
-                        {'uid': current_user.get('User ID', 'RES_01'), 'uname': current_user.get('Full Name', 'Resident')}
-                    )
-
-                if st.button("🚀 Navigate Instantly to Target Section"):
-                    st.session_state['current_page'] = target_page_name
+            if interpretation_choice and interpretation_choice != "-- Select Interpreted Number --":
+                target_section = interpretation_choice.split(" - ")[1]
+                st.success(f"✅ Successfully interpreted as: **{target_section}**")
+                if st.button("🚀 Navigate to Section"):
+                    st.session_state['current_page'] = target_section
                     st.rerun()
 
             # Display Media Permission Audit Logs for transparency
             st.markdown("---")
-            st.markdown("#### 📋 Media Access Permission & Interpretation Audit Logs")
+            st.markdown("#### 📋 Media Access Permission & Audit Logs")
             try:
                 with engine.connect() as conn:
                     logs_df = pd.read_sql(text('SELECT * FROM togethespace_v4_media_logs ORDER BY timestamp DESC LIMIT 10;'), con=conn)
                 if logs_df.empty:
-                    st.info("No logs recorded yet.")
+                    st.info("No media permissions logged yet.")
                 else:
                     st.dataframe(logs_df, use_container_width=True)
             except Exception as e:
@@ -2539,7 +2565,7 @@ else:
                                 label=f"📥 Download {admin_block} Credentials CSV",
                                 data=csv_data,
                                 file_name=f"togethespace_v4_credentials_{admin_block.lower()}.csv",
-                                mime="text/css",
+                                mime="text/csv",
                                 use_container_width=True
                             )
                     except Exception as e:
