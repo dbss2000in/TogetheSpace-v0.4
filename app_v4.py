@@ -10,6 +10,8 @@ from datetime import datetime, timedelta
 from PIL import Image
 import numpy as np
 import io
+import os
+import temp5sec_utils if False else None
 
 st.set_page_config(
     page_title='TogetheSpace v0.4 — Heritage High-Concurrency Edition',
@@ -490,6 +492,21 @@ else:
             }
         }
 
+        # --- QUERY PARAMS PAGE ROUTING SYNC FOR ACCESSIBILITY / GESTURES ---
+        if 'page' in st.query_params:
+            p_val = st.query_params['page']
+            valid_pages = [
+                "🧭 Facility & Service Index", "🎙️ Sign Language & Voice Hub", "📋 Resident Directory",
+                "🏡 Communication & Feed", "🎥 Media Corner", "🤝 Donation & Give-Away",
+                "💖 Admin Thanks & Support", "📈 West Bengal Market Rates (AI)", "📰 AI Top News Corner",
+                "🎓 AI Weekly Learning Corner", "🛒 Classifieds & Marketplace (Auction)",
+                "👔 Job Match & Employment Directory", "✉️ Personalized Event Invitations",
+                "🛠️ Helpdesk & Tickets", "📅 Facility Booking & Utilities", "🚨 Safety & SOS Alerts",
+                "📊 Community Polls & Voting", "🌟 Local Attractions & Events", "🔐 Community Admin Portal"
+            ]
+            if p_val in valid_pages:
+                st.session_state['current_page'] = p_val
+
         # --- AUTHENTICATION GATE ---
         if 'authenticated' not in st.session_state:
             st.session_state['authenticated'] = False
@@ -811,10 +828,10 @@ else:
             st.dataframe(pd.DataFrame(facility_index_data), use_container_width=True)
             render_alpona_motif()
 
-        # 0.1 SIGN LANGUAGE & VOICE HUB (With Page-Specific Media Permissions & Exact Number/Keyword Mapping)
+        # 0.1 SIGN LANGUAGE & VOICE HUB (Page-Specific Permission Toggles & Exact Mapping)
         elif menu_selection == "🎙️ Sign Language & Voice Hub":
             st.markdown("### 🎙️ Sign Language (Finger Gesture) & Voice Command Hub")
-            st.info("Accessibility Hub: Grant media permissions below to activate microphone voice input or camera snapshot gesture recognition (1 to 10 fingers mapping directly to pages).")
+            st.info("Accessibility Hub: When you open this page, you can authorize local media permission checkboxes below. Then select or type your spoken number (1-10) or finger count to navigate instantly to the corresponding section.")
 
             page_mapping_dict = {
                 "1": "📋 Resident Directory", "one": "📋 Resident Directory", "directory": "📋 Resident Directory", "residents": "📋 Resident Directory",
@@ -832,8 +849,8 @@ else:
             col_s1, col_s2 = st.columns(2)
 
             with col_s1:
-                st.markdown("#### 🗣️ Voice Command Navigation & Permission")
-                audio_permission_granted = st.checkbox("🔒 Authorize Microphone Access for Voice Hub", value=False, key="audio_perm_chk")
+                st.markdown("#### 🗣️ Voice Command Navigation & Local Permission Check")
+                audio_permission_granted = st.checkbox("🔒 Authorize Local Microphone Permission on this page", value=False, key="audio_perm_page")
                 
                 if audio_permission_granted:
                     with engine.begin() as conn:
@@ -841,9 +858,9 @@ else:
                             text('INSERT INTO togethespace_v4_media_logs (user_id, user_name, media_type, permission_status) VALUES (:uid, :uname, \'Audio Recorder\', \'Granted\')'),
                             {'uid': current_user.get('User ID', 'RES_01'), 'uname': current_user.get('Full Name', 'Resident')}
                         )
-                    st.success("✅ Microphone permission logged in audit trail.")
+                    st.success("✅ Microphone permission granted & recorded in system audit log.")
 
-                spoken_text_input = st.text_input("Spoken Number (1-10) or Command Keyword:", "", placeholder="Type or speak number (e.g. 7, Directory, Marketplace)...")
+                spoken_text_input = st.text_input("Enter Spoken Number (1-10) or Keyword:", "", placeholder="Type number heard or keyword (e.g. 7, Directory)...")
                 
                 if spoken_text_input and audio_permission_granted:
                     cleaned_input = spoken_text_input.strip().lower()
@@ -855,17 +872,17 @@ else:
                                 break
                     
                     if matched_page:
-                        st.success(f"✅ Voice command parsed: **{cleaned_input}** ➔ Navigating to **{matched_page}**")
+                        st.success(f"✅ Voice command successfully interpreted: **{cleaned_input}** ➔ Navigating to **{matched_page}**")
                         st.session_state['current_page'] = matched_page
                         st.rerun()
                     else:
-                        st.warning(f"⚠️ Unrecognized command: '{spoken_text_input}'. Try numbers 1-10 or keywords.")
+                        st.warning(f"⚠️ Unrecognized input: '{spoken_text_input}'. Please enter numbers 1-10 or keywords.")
                 elif spoken_text_input and not audio_permission_granted:
-                    st.warning("⚠️ Please check the permission authorization box above first.")
+                    st.warning("⚠️ Please authorize local microphone permission above first.")
 
             with col_s2:
-                st.markdown("#### 🖐️ Camera Gesture Snapshot & Permission")
-                cam_permission_granted = st.checkbox("🔒 Authorize Camera Video Access for Gesture Hub", value=False, key="cam_perm_chk")
+                st.markdown("#### 🖐️ Camera Gesture Recognition & Local Permission Check")
+                cam_permission_granted = st.checkbox("🔒 Authorize Local Camera Permission on this page", value=False, key="cam_perm_page")
 
                 if cam_permission_granted:
                     with engine.begin() as conn:
@@ -873,10 +890,10 @@ else:
                             text('INSERT INTO togethespace_v4_media_logs (user_id, user_name, media_type, permission_status) VALUES (:uid, :uname, \'Camera Scanner\', \'Granted\')'),
                             {'uid': current_user.get('User ID', 'RES_01'), 'uname': current_user.get('Full Name', 'Resident')}
                         )
-                    st.success("✅ Camera permission logged in audit trail.")
+                    st.success("✅ Camera permission granted & recorded in system audit log.")
 
-                gesture_selection = st.selectbox("Select exact finger count shown (1-10):", options=[
-                    "-- Select Finger Count --",
+                gesture_selection = st.selectbox("Select exact interpreted finger count (1-10):", options=[
+                    "-- Select Number of Fingers --",
                     "1 Finger: Resident Directory",
                     "2 Fingers: Marketplace Auction",
                     "3 Fingers: AI Learning Corner",
@@ -889,14 +906,14 @@ else:
                     "10 Fingers: Community Polls & Voting"
                 ])
 
-                if gesture_selection and gesture_selection != "-- Select Finger Count --" and cam_permission_granted:
+                if gesture_selection and gesture_selection != "-- Select Number of Fingers --" and cam_permission_granted:
                     target_page_str = gesture_selection.split(": ")[1]
-                    st.success(f"✅ Gesture decoded successfully: **{gesture_selection}**")
-                    if st.button("🚀 Confirm Gesture & Navigate"):
+                    st.success(f"✅ Gesture successfully interpreted: **{gesture_selection}**")
+                    if st.button("🚀 Confirm & Navigate to Section"):
                         st.session_state['current_page'] = target_page_str
                         st.rerun()
-                elif gesture_selection and gesture_selection != "-- Select Finger Count --" and not cam_permission_granted:
-                    st.warning("⚠️ Please check the camera permission authorization box above first.")
+                elif gesture_selection and gesture_selection != "-- Select Number of Fingers --" and not cam_permission_granted:
+                    st.warning("⚠️ Please authorize local camera permission above first.")
 
             # Display Media Permission Audit Logs for transparency
             st.markdown("---")
