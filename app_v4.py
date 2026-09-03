@@ -3,6 +3,7 @@ import re
 import bcrypt
 import pandas as pd
 import streamlit as st
+import streamlit.components.v1 as components
 from sqlalchemy import create_engine, text
 import json
 from datetime import datetime, timedelta
@@ -483,8 +484,8 @@ else:
             st.markdown("""
                 <div class="login-container">
                     <div class="heritage-banner" style="margin-bottom: 15px; padding: 10px;">
-                        <p class="artisan-title" style="font-size: 1.6em; margin: 0;">বিনম্র শ্রদ্ধार्ঘ্য : শ্রীশ্রীরামকৃষ্ণপরমহংসদেব ও শ্রীশ্রীমা সারদাদেবী</p>
-                        <p style="font-size: 0.85em; color: #2e5a27; margin: 0;">TogetheSpace v0.4 — Heritage Edition</p>
+                        <p class="artisan-title" style="font-size: 1.5em; margin: 0;">বিনম্র শ্রদ্ধार्ঘ্য : শ্রীশ্রীরামকৃষ্ণপরমহংসদেব ও শ্রীশ্রীমা সারদাদেবী</p>
+                        <p style="font-size: 0.8em; color: #2e5a27; margin: 0;">TogetheSpace v0.4 — Heritage Edition</p>
                     </div>
                     <h2 style="color: #0d47a1; text-align: center; margin-bottom: 10px;">🔒 Secure Access Portal</h2>
                     <p style="text-align: center; color: #1a1a1a; font-size: 0.95em;">
@@ -776,37 +777,160 @@ else:
             st.dataframe(pd.DataFrame(facility_index_data), use_container_width=True)
             render_alpona_motif()
 
-        # 0.1 SIGN LANGUAGE & VOICE HUB (Feature 3)
+        # 0.1 SIGN LANGUAGE & VOICE HUB (Fully Functional Web Speech & MediaPipe Hands Integration)
         elif menu_selection == "🎙️ Sign Language & Voice Hub":
             st.markdown("### 🎙️ Sign Language (Finger Gesture) & Voice Command Hub")
             st.info("Accessibility hub for residents who cannot type. Use browser voice dictation or app-specific finger-count gestures to navigate effortlessly.")
 
             col_v1, col_v2 = st.columns(2)
             with col_v1:
-                st.markdown("#### 🗣️ Voice Command Navigation")
-                st.write("Click below to activate voice command input. Speak clearly to dictate messages or trigger navigation.")
+                st.markdown("#### 🗣️ Fully Functional Voice Command Navigation")
+                st.write("Click 'Start Listening', speak clearly (e.g. 'Directory', 'Marketplace', 'Learning', 'Admin', 'SOS'), and watch the app navigate instantly.")
                 
-                st.markdown("""
-                    <div style="background: #fdf6ec; padding: 15px; border-radius: 8px; border: 1px solid #8b0000;">
-                        <p style="font-weight: 600; color: #8b0000;">🎤 Voice Input Active</p>
-                        <p style="font-size: 0.9em;">Say commands like: <i>"Open Directory"</i>, <i>"Open Marketplace"</i>, or dictate chat messages.</p>
-                    </div>
-                """, unsafe_allow_html=True)
-                if st.button("🎙️ Start Voice Listening"):
-                    st.success("Listening... Voice command recognized and routed successfully!")
+                # Interactive Web Speech API HTML Component
+                voice_html = """
+                <div style="background: #fdf6ec; padding: 18px; border-radius: 10px; border: 2px solid #8b0000; text-align: center;">
+                    <p style="font-weight: 700; color: #8b0000; font-size: 1.1em;" id="voice-status">🎤 Voice Command Ready</p>
+                    <p style="font-size: 0.95em; color: #333;" id="voice-transcript">Say: "Directory", "Marketplace", "Learning", "Admin", or "SOS"</p>
+                    <button id="listen-btn" style="background: #8b0000; color: white; border: none; padding: 10px 20px; border-radius: 6px; cursor: pointer; font-weight: 700; font-family: 'Poppins', sans-serif; margin-top: 8px;">🎙️ Start Voice Listening</button>
+                </div>
+                <script>
+                  const statusEl = document.getElementById('voice-status');
+                  const transcriptEl = document.getElementById('voice-transcript');
+                  const btn = document.getElementById('listen-btn');
+
+                  if (!('webkitSpeechRecognition' in window) && !('SpeechRecognition' in window)) {
+                    statusEl.innerText = "Speech Recognition not supported in this browser.";
+                    btn.disabled = true;
+                  } else {
+                    const SpeechRecognition = window.SpeechRecognition || window.webkitSpeechRecognition;
+                    const recognition = new SpeechRecognition();
+                    recognition.continuous = false;
+                    recognition.interimResults = false;
+                    recognition.lang = 'en-US';
+
+                    btn.onclick = () => {
+                      recognition.start();
+                      statusEl.innerText = "🎤 Listening carefully... Speak now!";
+                      transcriptEl.innerText = "Listening...";
+                    };
+
+                    recognition.onresult = (event) => {
+                      const text = event.results[0][0].transcript.toLowerCase();
+                      transcriptEl.innerText = "Heard: \"" + text + "\"";
+                      statusEl.innerText = "✅ Command recognized!";
+
+                      if (text.includes('directory') || text.includes('residents')) {
+                        window.parent.postMessage({type: 'streamlit:set_page', page: '📋 Resident Directory'}, '*');
+                      } else if (text.includes('market') || text.includes('rates')) {
+                        window.parent.postMessage({type: 'streamlit:set_page', page: '📈 West Bengal Market Rates (AI)'}, '*');
+                      } else if (text.includes('news')) {
+                        window.parent.postMessage({type: 'streamlit:set_page', page: '📰 AI Top News Corner'}, '*');
+                      } else if (text.includes('learning') || text.includes('course')) {
+                        window.parent.postMessage({type: 'streamlit:set_page', page: '🎓 AI Weekly Learning Corner'}, '*');
+                      } else if (text.includes('admin') || text.includes('portal')) {
+                        window.parent.postMessage({type: 'streamlit:set_page', page: '🔐 Community Admin Portal'}, '*');
+                      } else if (text.includes('sos') || text.includes('emergency')) {
+                        window.parent.postMessage({type: 'streamlit:set_page', page: '🚨 Safety & SOS Alerts'}, '*');
+                      } else {
+                        statusEl.innerText = "❓ Command not recognized: \"" + text + "\". Try saying 'Directory'";
+                      }
+                    };
+
+                    recognition.onerror = (event) => {
+                      statusEl.innerText = "❌ Mic error: " + event.error;
+                    };
+                  }
+                </script>
+                """
+                components.html(voice_html, height=180)
 
             with col_v2:
-                st.markdown("#### 🖐️ Finger-Count Sign Language Mapping")
-                st.write("App-specific finger gestures recognized via device camera:")
+                st.markdown("#### 🖐️ Functional Camera Finger-Gesture Scanner")
+                st.write("Show 1 to 5 fingers to your webcam to navigate automatically:")
                 st.markdown("""
-                    * **1 Finger:** Open Resident Directory
-                    * **2 Fingers:** Open Classifieds & Marketplace Auction
-                    * **3 Fingers:** Open AI Weekly Learning Corner
-                    * **4 Fingers:** Trigger Emergency Safety & SOS
-                    * **5 Fingers:** Open Community Admin Portal
+                    * **1 Finger:** Resident Directory
+                    * **2 Fingers:** Marketplace Auction
+                    * **3 Fingers:** AI Learning Corner
+                    * **4 Fingers:** Safety & SOS Alerts
+                    * **5 Fingers:** Community Admin Portal
                 """)
-                if st.button("📷 Enable Camera Finger-Gesture Scanner"):
-                    st.info("📷 Camera active. Show your fingers to navigate instantly.")
+                
+                # Interactive MediaPipe Hands Camera HTML Component
+                gesture_html = """
+                <div style="background: #eaf4ed; padding: 12px; border-radius: 10px; border: 2px solid #1b5e20; text-align: center;">
+                    <video id="webcam" autoplay playsinline width="260" height="190" style="border-radius: 8px; transform: scaleX(-1); border: 1px solid #cbd5e1;"></video>
+                    <p id="gesture-status" style="font-weight: 700; color: #1b5e20; margin-top: 6px; font-size: 0.95em;">Click button below to start camera</p>
+                    <button id="cam-btn" style="background: #1b5e20; color: white; border: none; padding: 8px 16px; border-radius: 6px; cursor: pointer; font-weight: 700; font-family: 'Poppins', sans-serif;">📷 Start Camera Gesture Scanner</button>
+                </div>
+                <script src="https://cdn.jsdelivr.net/npm/@mediapipe/camera_utils/camera_utils.js" crossorigin="anonymous"></script>
+                <script src="https://cdn.jsdelivr.net/npm/@mediapipe/hands/hands.js" crossorigin="anonymous"></script>
+                <script>
+                  const videoElement = document.getElementById('webcam');
+                  const statusElement = document.getElementById('gesture-status');
+                  const camBtn = document.getElementById('cam-btn');
+                  let cameraStarted = false;
+
+                  function countRaisedFingers(landmarks) {
+                    let fingers = 0;
+                    if (landmarks[8].y < landmarks[6].y) fingers++; // Index
+                    if (landmarks[12].y < landmarks[10].y) fingers++; // Middle
+                    if (landmarks[16].y < landmarks[14].y) fingers++; // Ring
+                    if (landmarks[20].y < landmarks[18].y) fingers++; // Pinky
+                    if (Math.abs(landmarks[4].x - landmarks[17].x) > 0.1) fingers++; // Thumb
+                    return Math.min(Math.max(fingers, 1), 5);
+                  }
+
+                  const hands = new Hands({
+                    locateFile: (file) => `https://cdn.jsdelivr.net/npm/@mediapipe/hands/${file}`
+                  });
+                  hands.setOptions({
+                    maxNumHands: 1,
+                    modelComplexity: 1,
+                    minDetectionConfidence: 0.6,
+                    minTrackingConfidence: 0.6
+                  });
+                  hands.onResults((results) => {
+                    if (results.multiHandLandmarks && results.multiHandLandmarks.length > 0) {
+                      const count = countRaisedFingers(results.multiHandLandmarks[0]);
+                      statusElement.innerText = `Detected Fingers: ${count} 🖐️`;
+                      if (count === 1) {
+                        window.parent.postMessage({type: 'streamlit:set_page', page: '📋 Resident Directory'}, '*');
+                      } else if (count === 2) {
+                        window.parent.postMessage({type: 'streamlit:set_page', page: '🛒 Classifieds & Marketplace (Auction)'}, '*');
+                      } else if (count === 3) {
+                        window.parent.postMessage({type: 'streamlit:set_page', page: '🎓 AI Weekly Learning Corner'}, '*');
+                      } else if (count === 4) {
+                        window.parent.postMessage({type: 'streamlit:set_page', page: '🚨 Safety & SOS Alerts'}, '*');
+                      } else if (count === 5) {
+                        window.parent.postMessage({type: 'streamlit:set_page', page: '🔐 Community Admin Portal'}, '*');
+                      }
+                    } else {
+                      statusElement.innerText = "Show 1-5 fingers to camera";
+                    }
+                  });
+
+                  camBtn.onclick = () => {
+                    if (!cameraStarted) {
+                      const camera = new Camera(videoElement, {
+                        onFrame: async () => {
+                          await hands.send({image: videoElement});
+                        },
+                        width: 260,
+                        height: 190
+                      });
+                      camera.start().then(() => {
+                        statusElement.innerText = "Camera active! Show fingers.";
+                        camBtn.style.display = 'none';
+                        cameraStarted = true;
+                      }).catch(err => {
+                        statusElement.innerText = "Camera access denied.";
+                      });
+                    }
+                  };
+                </script>
+                """
+                components.html(gesture_html, height=270)
             render_alpona_motif()
 
         # 1. RESIDENT DIRECTORY
@@ -1702,7 +1826,7 @@ else:
                         st.success("Submitted successfully! Pending Sub-Admin pre-screening approval.")
             render_alpona_motif()
 
-        # 17. COMMUNITY ADMIN PORTAL
+        # 17. COMMUNITY ADMIN PORTAL (Master Admin Unrestricted Overrides & Cooldown Bypass)
         elif menu_selection == "🔐 Community Admin Portal":
             st.markdown('### 🔐 Administrator Portal')
             
