@@ -499,7 +499,7 @@ else:
             st.markdown("""
                 <div class="login-container">
                     <div class="heritage-banner" style="margin-bottom: 15px; padding: 10px;">
-                        <p class="artisan-title" style="font-size: 1.4em; margin: 0;">শ্রীশ্রীরামকৃষ্ণপরমহংসদেব ও শ্রীশ্রীমা সারদাদেবীর পদপ্রান্তে বিনম্র শ্রদ্ধার্ঘ্য :</p>
+                        <p class="artisan-title" style="font-size: 1.4em; margin: 0;">শ্রীশ্রীরামকৃষ্ণপরমহংসদেব ও শ্রীশ্রীমা সারদাদেবীর পদপ্রান্তে বিনম্র শ্রদ্ধार्ঘ্য :</p>
                         <p style="font-size: 0.85em; color: #2e5a27; margin: 0;">অঙ্গন — একসাথে - The TogetheSpace</p>
                         <p style="font-size: 0.75em; color: #5c0000; margin-top: 4px;">✦ শ্রী রামকৃষ্ণ ও মা সারদার আদর্শে সতত ধাবমান ✦</p>
                     </div>
@@ -670,7 +670,7 @@ else:
         # --- HERITAGE WELCOME BANNER DISPLAYED ON LANDING (Exact User Requested Wording) ---
         st.markdown("""
             <div class="heritage-banner">
-                <p class="artisan-title" style="margin: 0; font-size: 2.1em;">শ্রীশ্রীরামকৃষ্ণপরমহংসদেব ও শ্রীশ্রীমা সারদাদেবীর পদপ্রান্তে বিনম্র শ্রদ্ধার্ঘ্য :</p>
+                <p class="artisan-title" style="margin: 0; font-size: 2.1em;">শ্রীশ্রীরামকৃষ্ণপরমহংসদেব ও শ্রীশ্রীমা সারদাদেবীর পদপ্রান্তে বিনম্র শ্রদ্ধार्ঘ্য :</p>
                 <p style="font-size: 1.15em; color: #2e5a27; margin-top: 6px; font-weight: 700;">
                     অঙ্গন — একসাথে - The TogetheSpace
                 </p>
@@ -791,7 +791,7 @@ else:
             st.dataframe(pd.DataFrame(facility_index_data), use_container_width=True)
             render_alpona_motif()
 
-        # 0.1 SIGN LANGUAGE & VOICE HUB (Fully Functional Web Speech & MediaPipe Hands with allow permissions)
+        # 0.1 SIGN LANGUAGE & VOICE HUB (Fully Functional Web Speech & MediaPipe Hands Integration)
         elif menu_selection == "🎙️ Sign Language & Voice Hub":
             st.markdown("### 🎙️ Sign Language (Finger Gesture) & Voice Command Hub")
             st.info("Accessibility hub for residents who cannot type. Use browser voice dictation or app-specific finger-count gestures to navigate effortlessly.")
@@ -862,7 +862,7 @@ else:
                   }
                 </script>
                 """
-                components.html(voice_html, height=180, allow="microphone")
+                components.html(voice_html, height=180)
 
             with col_v2:
                 st.markdown("#### 🖐️ Functional Camera Finger-Gesture Scanner")
@@ -953,7 +953,7 @@ else:
                   };
                 </script>
                 """
-                components.html(gesture_html, height=270, allow="camera")
+                components.html(gesture_html, height=270)
             render_alpona_motif()
 
         # 1. RESIDENT DIRECTORY
@@ -2619,7 +2619,7 @@ else:
                                 label=f"📥 Download {admin_block} Credentials CSV",
                                 data=csv_data,
                                 file_name=f"togethespace_credentials_{admin_block.lower().replace('_', '_')}.csv",
-                                mime="text/css",
+                                mime="text/csv",
                                 use_container_width=True
                             )
                     except Exception as e:
