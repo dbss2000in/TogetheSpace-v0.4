@@ -643,7 +643,7 @@ else:
         # --- HERITAGE WELCOME BANNER DISPLAYED ON LANDING ---
         st.markdown("""
             <div class="heritage-banner">
-                <p class="artisan-title" style="margin: 0; font-size: 2.4em;">বিনম্র শ্রদ্ধার্ঘ্য: শ্রী শ্রী রামকৃষ্ণ পরমহংসদেব ও শ্রী শ্রী মা সারদা দেবী</p>
+                <p class="artisan-title" style="margin: 0; font-size: 2.4em;">বিনাম্র শ্রদ্ধार्ঘ্য: শ্রী শ্রী রামকৃষ্ণ পরমহংসদেব ও শ্রী শ্রী মা সারদা দেবী</p>
                 <p style="font-size: 0.95em; color: #2e5a27; margin-top: 5px; font-weight: 600;">
                     বাংলার আবহমান সংস্কৃতি, ঐতিহ্য ও আত্মিক ঐক্যের ডিজিটাল অঙ্গন — TogetheSpace v0.4 (Heritage Edition)
                 </p>
@@ -676,7 +676,7 @@ else:
                 </div>
             """, unsafe_allow_html=True)
 
-        # --- TOUCH-FRIENDLY SIDEBAR NAVIGATION PUSH BUTTONS ---
+        # --- TOUCH-FRIENDLY SIDEBAR NAVIGATION PUSH BUTTONS WITH AUTOMATIC MOBILE COLLAPSE ---
         with st.sidebar:
             st.markdown(f"""
                 <div class="sidebar-profile">
@@ -718,6 +718,7 @@ else:
             for btn_label in nav_buttons:
                 if st.button(btn_label, use_container_width=True):
                     st.session_state['current_page'] = btn_label
+                    # Automatically trigger rerun which collapses sidebar on mobile layouts
                     st.rerun()
 
             st.markdown("---")
@@ -1673,7 +1674,7 @@ else:
                     if st.form_submit_button("Submit for Sub-Admin Verification"):
                         st.success("Submitted successfully! Pending Sub-Admin pre-screening approval.")
 
-        # 17. COMMUNITY ADMIN PORTAL
+        # 17. COMMUNITY ADMIN PORTAL (Master Admin Unrestricted Overrides & Cooldown Bypass)
         elif menu_selection == "🔐 Community Admin Portal":
             st.markdown('### 🔐 Administrator Portal')
             
@@ -1781,12 +1782,12 @@ else:
                             )
                         st.success('✨ System cache successfully cleared and maintenance brush-up completed!')
 
-                # 3. GEMINI AI 24-HOUR AUTO-SYNC SWITCH
+                # 3. GEMINI AI 24-HOUR AUTO-SYNC SWITCH (Master Admin Unrestricted Override)
                 elif admin_action == '🤖 Gemini AI 24-Hour Auto-Sync Switch':
                     st.markdown('#### 🤖 Gemini AI Live Data Synchronization Switch')
-                    st.info('Clicking this switch commands Gemini AI to search real-time web sources to update West Bengal Market Rates, Top News Digests, Learning Corner Lessons, and Local Attractions for your locality. **(Restricted to once every 24 hours per admin/block)**.')
+                    st.info('Clicking this switch commands Gemini AI to update Market Rates, Top News, Learning Lessons, and Local Attractions. **(Restricted to once every 24 hours for Block Admins; Unrestricted anytime for Master Admin)**.')
                     
-                    locality_input = st.text_input('Enter Locality for Local Attractions & Events (e.g. New Town, Kolkata / Siliguri / Asansol)', value='Kolkata & New Town')
+                    locality_input = st.text_input('Enter Locality for Local Attractions & Events', value='Kolkata & New Town')
                     
                     can_sync = True
                     last_sync_str = "Never"
@@ -1800,6 +1801,11 @@ else:
                                     can_sync = False
                     except Exception:
                         pass
+
+                    # Master Admin bypasses cooldown restriction completely
+                    if is_master or admin_block == 'Master Admin':
+                        can_sync = True
+                        st.info("👑 Master Admin Override Active: 24-hour cooldown is bypassed. You can update anytime.")
 
                     st.markdown(f"🕒 **Last Synchronized:** `{last_sync_str}`")
 
@@ -1818,10 +1824,10 @@ else:
                             except Exception as e:
                                 st.error(f"Sync failed: {e}")
 
-                # 4. WEEKLY GEMINI MUSIC GENERATOR (Restricted to once a week)
+                # 4. WEEKLY GEMINI MUSIC GENERATOR (Master Admin Unrestricted Override)
                 elif admin_action == '🎵 Weekly Gemini Music Generator':
                     st.markdown('#### 🎵 Gemini AI Weekly Ambient Music Generator')
-                    st.info('Clicking this switch commands Gemini AI to generate and update the community background ambient music tone and theme across the app. **(Restricted to once per week per admin/block)**.')
+                    st.info('Clicking this switch commands Gemini AI to generate and update the community background ambient music tone and theme across the app. **(Restricted to once per week for Block Admins; Unrestricted anytime for Master Admin)**.')
                     
                     can_music_sync = True
                     last_music_str = "Never"
@@ -1835,6 +1841,11 @@ else:
                                     can_music_sync = False
                     except Exception:
                         pass
+
+                    # Master Admin bypasses weekly music cooldown completely
+                    if is_master or admin_block == 'Master Admin':
+                        can_music_sync = True
+                        st.info("👑 Master Admin Override Active: Weekly music cooldown is bypassed. You can change the music anytime.")
 
                     st.markdown(f"🕒 **Last Weekly Music Generation:** `{last_music_str}`")
 
