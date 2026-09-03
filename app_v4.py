@@ -791,10 +791,10 @@ else:
             st.dataframe(pd.DataFrame(facility_index_data), use_container_width=True)
             render_alpona_motif()
 
-        # 0.1 SIGN LANGUAGE & VOICE HUB (Fully Functional Voice & Camera Gesture with Direct Navigation Mapping)
+        # 0.1 SIGN LANGUAGE & VOICE HUB (Fully Functional Voice & Camera Gesture with Direct 1-10 Page Mapping)
         elif menu_selection == "🎙️ Sign Language & Voice Hub":
             st.markdown("### 🎙️ Sign Language (Finger Gesture) & Voice Command Hub")
-            st.info("Accessibility hub for residents who cannot type. Use browser voice dictation or app-specific finger-count gestures (1 to 10 fingers or spoken numbers/keywords) to navigate effortlessly.")
+            st.info("Accessibility hub for residents who cannot type. Use browser voice dictation (say numbers 1-10 or keywords) or show fingers (1-10) to navigate directly to the corresponding page.")
 
             col_v1, col_v2 = st.columns(2)
             with col_v1:
@@ -861,7 +861,8 @@ else:
                       if (targetPage) {
                         statusEl.innerText = "✅ Navigating to: " + targetPage;
                         setTimeout(() => {
-                          window.parent.location.href = window.parent.location.origin + window.parent.location.pathname + '?page=' + encodeURIComponent(targetPage);
+                          const newUrl = window.parent.location.origin + window.parent.location.pathname + '?page=' + encodeURIComponent(targetPage);
+                          window.parent.location.href = newUrl;
                         }, 700);
                       } else {
                         statusEl.innerText = "❓ Command not matched: \"" + transcript + "\". Try saying '1' or 'Directory'";
@@ -922,13 +923,11 @@ else:
 
                   function countAllFingers(landmarks, handedness) {
                     let count = 0;
-                    // Four fingers (Index, Middle, Ring, Pinky) - tip y vs pip y
-                    if (landmarks[8].y < landmarks[6].y) count++;
-                    if (landmarks[12].y < landmarks[10].y) count++;
-                    if (landmarks[16].y < landmarks[14].y) count++;
-                    if (landmarks[20].y < landmarks[18].y) count++;
+                    if (landmarks[8].y < landmarks[6].y) count++; // Index
+                    if (landmarks[12].y < landmarks[10].y) count++; // Middle
+                    if (landmarks[16].y < landmarks[14].y) count++; // Ring
+                    if (landmarks[20].y < landmarks[18].y) count++; // Pinky
 
-                    // Thumb check based on handedness
                     const isRightHand = handedness === 'Right';
                     if (isRightHand) {
                       if (landmarks[4].x < landmarks[3].x) count++;
@@ -965,7 +964,8 @@ else:
                         if (targetPage) {
                           statusElement.innerText = "✅ Navigating to: " + targetPage;
                           setTimeout(() => {
-                            window.parent.location.href = window.parent.location.origin + window.parent.location.pathname + '?page=' + encodeURIComponent(targetPage);
+                            const newUrl = window.parent.location.origin + window.parent.location.pathname + '?page=' + encodeURIComponent(targetPage);
+                            window.parent.location.href = newUrl;
                           }, 600);
                         }
                       }
@@ -2662,12 +2662,12 @@ else:
                             st.download_button(
                                 label=f"📥 Download {admin_block} Credentials CSV",
                                 data=csv_data,
-                                file_name=f"togethespace_credentials_{admin_block.lower().replace('_', '_')}.csv",
-                                mime="text/css",
+                                file_name=f"togethespace_v4_credentials_{admin_block.lower()}.csv",
+                                mime="text/csv",
                                 use_container_width=True
                             )
                     except Exception as e:
-                        st.warning(f'Could not generate credential export: {e}')
+                        st.warning(f'Could not export credentials: {e}')
 
     except Exception as e:
-        st.error(f'Database connection or query failed: {e}')
+        st.error(f'Database connection or error: {e}')
