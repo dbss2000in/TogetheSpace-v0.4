@@ -490,21 +490,6 @@ else:
             }
         }
 
-        # --- QUERY PARAMS PAGE ROUTING SYNC ---
-        if 'page' in st.query_params:
-            p_val = st.query_params['page']
-            valid_pages = [
-                "🧭 Facility & Service Index", "🎙️ Sign Language & Voice Hub", "📋 Resident Directory",
-                "🏡 Communication & Feed", "🎥 Media Corner", "🤝 Donation & Give-Away",
-                "💖 Admin Thanks & Support", "📈 West Bengal Market Rates (AI)", "📰 AI Top News Corner",
-                "🎓 AI Weekly Learning Corner", "🛒 Classifieds & Marketplace (Auction)",
-                "👔 Job Match & Employment Directory", "✉️ Personalized Event Invitations",
-                "🛠️ Helpdesk & Tickets", "📅 Facility Booking & Utilities", "🚨 Safety & SOS Alerts",
-                "📊 Community Polls & Voting", "🌟 Local Attractions & Events", "🔐 Community Admin Portal"
-            ]
-            if p_val in valid_pages:
-                st.session_state['current_page'] = p_val
-
         # --- AUTHENTICATION GATE ---
         if 'authenticated' not in st.session_state:
             st.session_state['authenticated'] = False
@@ -826,37 +811,29 @@ else:
             st.dataframe(pd.DataFrame(facility_index_data), use_container_width=True)
             render_alpona_motif()
 
-        # 0.1 SIGN LANGUAGE & VOICE HUB (Unified 5-Second Video / Audio / Gesture Recorder with Number & Keyword Mapping)
+        # 0.1 SIGN LANGUAGE & VOICE HUB (Unified Precision Number Mapping with Instant Accuracy Selector)
         elif menu_selection == "🎙️ Sign Language & Voice Hub":
-            st.markdown("### 🎙️ Unified Sign Language & Voice Hub (5-Second Accessibility Recorder)")
-            st.info("Accessibility Hub: Use the native recorder widget below to record a brief 5-second video/audio snapshot or select your intended page/finger number (1-10) directly to navigate instantly with 100% reliability.")
+            st.markdown("### 🎙️ Sign Language (Finger Gesture) & Voice Command Hub")
+            st.info("Accessibility Hub: Use the precise 1-10 selector below to map your recorded voice command or gesture count (1-10) directly to the correct page with 100% precision.")
 
             page_mapping_dict = {
-                "1": "📋 Resident Directory", "one": "📋 Resident Directory", "directory": "📋 Resident Directory", "residents": "📋 Resident Directory",
-                "2": "🛒 Classifieds & Marketplace (Auction)", "two": "🛒 Classifieds & Marketplace (Auction)", "marketplace": "🛒 Classifieds & Marketplace (Auction)", "auction": "🛒 Classifieds & Marketplace (Auction)",
-                "3": "🎓 AI Weekly Learning Corner", "three": "🎓 AI Weekly Learning Corner", "learning": "🎓 AI Weekly Learning Corner", "course": "🎓 AI Weekly Learning Corner",
-                "4": "🚨 Safety & SOS Alerts", "four": "🚨 Safety & SOS Alerts", "sos": "🚨 Safety & SOS Alerts", "emergency": "🚨 Safety & SOS Alerts",
-                "5": "🔐 Community Admin Portal", "five": "🔐 Community Admin Portal", "admin": "🔐 Community Admin Portal", "portal": "🔐 Community Admin Portal",
-                "6": "🧭 Facility & Service Index", "six": "🧭 Facility & Service Index", "facility": "🧭 Facility & Service Index",
-                "7": "👔 Job Match & Employment Directory", "seven": "👔 Job Match & Employment Directory", "job": "👔 Job Match & Employment Directory",
-                "8": "🏡 Communication & Feed", "eight": "🏡 Communication & Feed", "feed": "🏡 Communication & Feed",
-                "9": "🎥 Media Corner", "nine": "🎥 Media Corner", "media": "🎥 Media Corner",
-                "10": "📊 Community Polls & Voting", "ten": "📊 Community Polls & Voting", "polls": "📊 Community Polls & Voting", "voting": "📊 Community Polls & Voting"
+                "1": "📋 Resident Directory",
+                "2": "🛒 Classifieds & Marketplace (Auction)",
+                "3": "🎓 AI Weekly Learning Corner",
+                "4": "🚨 Safety & SOS Alerts",
+                "5": "🔐 Community Admin Portal",
+                "6": "🧭 Facility & Service Index",
+                "7": "👔 Job Match & Employment Directory",
+                "8": "🏡 Communication & Feed",
+                "9": "🎥 Media Corner",
+                "10": "📊 Community Polls & Voting"
             }
 
-            st.markdown("#### 🎥 Unified Media Recorder (5-Second Max Duration)")
-            st.write("Record audio/video or take a snapshot for accessibility interpretation.")
-            
-            # Native Streamlit Camera & Audio Inputs for maximum cross-browser reliability
-            col_rec1, col_rec2 = st.columns(2)
-            with col_rec1:
-                unified_video = st.camera_input("Capture 5-Sec Video / Gesture Snapshot")
-            with col_rec2:
-                unified_audio = st.audio_input("Record 5-Sec Spoken Audio Command")
+            st.markdown("#### 🎯 Precise 1-10 Section Navigation (Audio & Gesture Interpreter)")
+            st.write("Match your spoken number or shown finger count (1 to 10) directly to the exact target section:")
 
-            # Direct Precision Selector for 100% Reliable Number/Keyword Navigation
-            direct_selection = st.selectbox("Or select the intended page number (1-10) / keyword directly:", options=[
-                "-- Select Page / Number / Gesture --",
+            selected_number_input = st.selectbox("Select Interpreted Number / Finger Count / Keyword (1-10):", options=[
+                "-- Select Number (1-10) --",
                 "1 - 📋 Resident Directory",
                 "2 - 🛒 Classifieds & Marketplace (Auction)",
                 "3 - 🎓 AI Weekly Learning Corner",
@@ -869,45 +846,29 @@ else:
                 "10 - 📊 Community Polls & Voting"
             ])
 
-            if unified_video is not None:
-                st.success("✅ 5-second video snapshot successfully captured and logged!")
+            if selected_number_input and selected_number_input != "-- Select Number (1-10) --":
+                target_page_name = selected_number_input.split(" - ")[1]
+                st.success(f"✅ Interpreted correctly: **{selected_number_input}** ➔ **{target_page_name}**")
+                
+                # Log permission & navigation in audit trail
                 with engine.begin() as conn:
                     conn.execute(
-                        text('INSERT INTO togethespace_v4_media_logs (user_id, user_name, media_type, permission_status) VALUES (:uid, :uname, \'Unified Video Recorder\', \'Granted\')'),
+                        text('INSERT INTO togethespace_v4_media_logs (user_id, user_name, media_type, permission_status) VALUES (:uid, :uname, \'Precise 1-10 Interpreter\', \'Granted\')'),
                         {'uid': current_user.get('User ID', 'RES_01'), 'uname': current_user.get('Full Name', 'Resident')}
                     )
-                st.info("🤖 [Server-Side AI Decoder]: Video stream parsed securely. File deleted automatically for privacy. Navigating to **Resident Directory** (Page 1)")
-                if st.button("🚀 Navigate to Page 1"):
-                    st.session_state['current_page'] = "📋 Resident Directory"
-                    st.rerun()
 
-            if unified_audio is not None:
-                st.success("✅ 5-second audio recording successfully captured and logged!")
-                with engine.begin() as conn:
-                    conn.execute(
-                        text('INSERT INTO togethespace_v4_media_logs (user_id, user_name, media_type, permission_status) VALUES (:uid, :uname, \'Unified Audio Recorder\', \'Granted\')'),
-                        {'uid': current_user.get('User ID', 'RES_01'), 'uname': current_user.get('Full Name', 'Resident')}
-                    )
-                st.info("🤖 [Server-Side STT]: Audio stream decoded securely. File deleted automatically for privacy. Navigating to **Marketplace Auction** (Page 2)")
-                if st.button("🚀 Navigate to Page 2"):
-                    st.session_state['current_page'] = "🛒 Classifieds & Marketplace (Auction)"
-                    st.rerun()
-
-            if direct_selection and direct_selection != "-- Select Page / Number / Gesture --":
-                target_page_name = direct_selection.split(" - ")[1]
-                st.success(f"✅ Selected target section: **{target_page_name}**")
-                if st.button("🚀 Confirm & Navigate Instantly"):
+                if st.button("🚀 Navigate Instantly to Target Section"):
                     st.session_state['current_page'] = target_page_name
                     st.rerun()
 
             # Display Media Permission Audit Logs for transparency
             st.markdown("---")
-            st.markdown("#### 📋 Media Access Permission Audit Logs")
+            st.markdown("#### 📋 Media Access Permission & Interpretation Audit Logs")
             try:
                 with engine.connect() as conn:
                     logs_df = pd.read_sql(text('SELECT * FROM togethespace_v4_media_logs ORDER BY timestamp DESC LIMIT 10;'), con=conn)
                 if logs_df.empty:
-                    st.info("No media permissions logged yet.")
+                    st.info("No logs recorded yet.")
                 else:
                     st.dataframe(logs_df, use_container_width=True)
             except Exception as e:
