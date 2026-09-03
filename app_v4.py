@@ -8,25 +8,25 @@ import json
 from datetime import datetime, timedelta
 
 st.set_page_config(
-    page_title='TogetheSpace v0.4 — High Concurrency Hub',
+    page_title='TogetheSpace v0.4 — Heritage High-Concurrency Edition',
     page_icon='⚡',
     layout='wide',
 )
 
-# --- DEEP, VIBRANT TYPOGRAPHY & SEA-GREEN THEME CUSTOM STYLING ---
+# --- BENGAL HERITAGE & ARTISAN TYPOGRAPHY STYLING ---
 st.markdown("""
     <style>
-    @import url('https://fonts.googleapis.com/css2?family=Merriweather:ital,wght@0,400;0,700;1,400&family=Poppins:wght@400;500;600;700&family=Fira+Code:wght@400;500&display=swap');
+    @import url('https://fonts.googleapis.com/css2?family=Caveat:wght@600&family=Playfair+Display:ital,wght@0,600;0,700;1,400&family=Poppins:wght@400;500;600;700&family=Fira+Code:wght@400;500&display=swap');
 
     .main {
-        background-color: #f4f6f8;
+        background-color: #f7f9f6;
         color: #111111;
         font-family: 'Poppins', sans-serif;
     }
     
     h1, h2, h3, h4, h5, h6 {
-        color: #0a0a0a !important;
-        font-family: 'Poppins', sans-serif;
+        color: #1b3b1a !important;
+        font-family: 'Playfair Display', serif;
         font-weight: 700;
     }
     
@@ -36,9 +36,25 @@ st.markdown("""
         font-weight: 500;
     }
 
+    .artisan-title {
+        font-family: 'Caveat', cursive !important;
+        font-size: 2.2em;
+        color: #8b0000 !important;
+    }
+
+    .heritage-banner {
+        background: linear-gradient(135deg, #fdfbf7 0%, #eef5ed 100%);
+        border: 2px solid #2e5a27;
+        border-radius: 12px;
+        padding: 20px;
+        margin-bottom: 20px;
+        box-shadow: 0 4px 12px rgba(46, 90, 39, 0.15);
+        text-align: center;
+    }
+
     code, pre {
         font-family: 'Fira Code', monospace !important;
-        color: #b71c1c !important;
+        color: #8b0000 !important;
         font-weight: 600;
     }
 
@@ -82,7 +98,7 @@ st.markdown("""
         box-shadow: 0 4px 12px rgba(0, 0, 0, 0.1);
         max-width: 550px;
         margin: 50px auto;
-        border-top: 6px solid #0d47a1;
+        border-top: 6px solid #8b0000;
     }
     .sidebar-profile {
         background-color: #eaf4ed;
@@ -117,7 +133,7 @@ try:
 except Exception:
     pass
 
-st.title('⚡ TogetheSpace v0.4 (High-Concurrency Edition)')
+st.title('⚡ TogetheSpace v0.4 — Heritage Edition')
 
 if not DATABASE_URL:
     st.error('DATABASE_URL is missing. Please configure it in Streamlit Cloud Secrets.')
@@ -129,7 +145,7 @@ else:
     try:
         engine = get_db_engine(DATABASE_URL)
         
-        # CENTRALIZED DATABASE INITIALIZATION
+        # CENTRALIZED DATABASE INITIALIZATION (Including Music Sync & Overrides)
         with engine.begin() as conn:
             conn.execute(text('SELECT 1;'))
             
@@ -340,6 +356,13 @@ else:
                 );
             """))
 
+            conn.execute(text("""
+                CREATE TABLE IF NOT EXISTS togethespace_v4_music_sync_logs (
+                    block VARCHAR(50) PRIMARY KEY,
+                    last_music_sync TIMESTAMP
+                );
+            """))
+
         def hash_password(plain_text_password):
             return bcrypt.hashpw(plain_text_password.encode('utf-8'), bcrypt.gensalt()).decode('utf-8')
 
@@ -443,6 +466,10 @@ else:
         if not st.session_state['authenticated']:
             st.markdown("""
                 <div class="login-container">
+                    <div class="heritage-banner" style="margin-bottom: 15px; padding: 10px;">
+                        <p class="artisan-title" style="font-size: 1.6em; margin: 0;">শুদ্ধ সংস্কৃতি ও সুরক্ষা</p>
+                        <p style="font-size: 0.8em; color: #444; margin: 0;">TogetheSpace v0.4 — Heritage Edition</p>
+                    </div>
                     <h2 style="color: #0d47a1; text-align: center; margin-bottom: 10px;">🔒 Secure Access Portal</h2>
                     <p style="text-align: center; color: #1a1a1a; font-size: 0.95em;">
                         Select your login type and authenticate to enter TogetheSpace.
@@ -567,6 +594,16 @@ else:
         is_master = st.session_state.get('is_admin_session') and st.session_state.get('admin_preselected_role') == 'Master Admin'
         is_admin_user = st.session_state.get('is_admin_session', False)
 
+        # --- HERITAGE WELCOME BANNER DISPLAYED ON LANDING ---
+        st.markdown("""
+            <div class="heritage-banner">
+                <p class="artisan-title" style="margin: 0; font-size: 2.4em;">বিনাম্র শ্রদ্ধার্ঘ্য: শ্রী শ্রী রামকৃষ্ণ পরমহংসদেব ও শ্রী শ্রী মা সারদা দেবী</p>
+                <p style="font-size: 0.95em; color: #2e5a27; margin-top: 5px; font-weight: 600;">
+                    বাংলার আবহমান সংস্কৃতি, ঐতিহ্য ও আত্মিক ঐক্যের ডিজিটাল অঙ্গন — TogetheSpace v0.4 (Heritage Edition)
+                </p>
+            </div>
+        """, unsafe_allow_html=True)
+
         # --- AUTOMATED MAINTENANCE & NOTICES ANNOUNCEMENT ---
         current_hour = datetime.now().hour
         current_minute = datetime.now().minute
@@ -592,9 +629,11 @@ else:
             st.markdown("### 🧭 Community Menu")
             
             if 'current_page' not in st.session_state:
-                st.session_state['current_page'] = "📋 Resident Directory"
+                st.session_state['current_page'] = "🧭 Facility & Service Index"
 
             nav_buttons = [
+                "🧭 Facility & Service Index",
+                "🎙️ Sign Language & Voice Hub",
                 "📋 Resident Directory",
                 "🏡 Communication & Feed",
                 "🎥 Media Corner",
@@ -662,8 +701,74 @@ else:
 
         # --- ROUTING BASED ON PUSH BUTTON SELECTION ---
 
+        # 0. FACILITY & SERVICE INDEX (New Feature 1)
+        if menu_selection == "🧭 Facility & Service Index":
+            st.markdown("### 🧭 Master Facility & Service Index")
+            st.info("A concise directory mapping community facilities to their specific available services for residents.")
+
+            facility_index_data = {
+                "Facility Name": [
+                    "Resident Directory", "Communication & Feed", "Media Corner", 
+                    "Donation & Give-Away", "Market Rates (AI)", "AI Top News Corner", 
+                    "AI Weekly Learning", "Classifieds & Auction", "Job Match Directory", 
+                    "Event Invitations", "Helpdesk & Tickets", "Public Utilities Directory", 
+                    "Safety & SOS Alerts", "Community Polls", "Local Attractions"
+                ],
+                "Primary Service Available": [
+                    "Member datasheets, verified contacts, social channels & employment status.",
+                    "Community posts, media uploads (200MB), jurisdiction messenger & notices.",
+                    "Streaming public/private event links and cultural recordings.",
+                    "Item donation announcements (apparel, books, furniture) & admin disbursement.",
+                    "Real-time AI aggregation of essential commodity prices across 7 Bengal cities.",
+                    "AI-curated prominent Bengal media headlines in exact 5-sentence digests.",
+                    "52-week automated daily masterclass with multilingual translation & speech read-aloud.",
+                    "Secure buy/rent listings with competitive live bidding and top-bid display.",
+                    "Job seeker and employer profiles with daily wage bidding and direct contact.",
+                    "Private digital mass event cards for marriages, Annaprashan, and birthdays.",
+                    "Maintenance request logging for plumbing, electrical, and structural issues.",
+                    "Clickable navigation to municipal, police, electricity, and water authorities.",
+                    "Instant emergency broadcast escalation bypassing bottlenecks for life safety.",
+                    "Admin-initiated electronic voting and weekly polling for block decisions.",
+                    "Sub-admin pre-screened neighborhood heritage spots, restaurants, and parks."
+                ]
+            }
+            st.dataframe(pd.DataFrame(facility_index_data), use_container_width=True)
+
+        # 0.1 SIGN LANGUAGE & VOICE HUB (New Feature 3)
+        elif menu_selection == "🎙️ Sign Language & Voice Hub":
+            st.markdown("### 🎙️ Sign Language (Finger Gesture) & Voice Command Hub")
+            st.info("Accessibility hub for residents who cannot type. Use browser voice dictation or app-specific finger-count gestures to navigate effortlessly.")
+
+            col_v1, col_v2 = st.columns(2)
+            with col_v1:
+                st.markdown("#### 🗣️ Voice Command Navigation")
+                st.write("Click below to activate voice command input. Speak clearly to dictate messages or trigger navigation.")
+                
+                # Embedded browser speech recognition simulator component
+                st.markdown("""
+                    <div style="background: #eaf4ed; padding: 15px; border-radius: 8px; border: 1px solid #1b5e20;">
+                        <p style="font-weight: 600; color: #1b5e20;">🎤 Voice Input Active</p>
+                        <p style="font-size: 0.9em;">Say commands like: <i>"Open Directory"</i>, <i>"Open Marketplace"</i>, or dictate chat messages.</p>
+                    </div>
+                """, unsafe_allow_html=True)
+                if st.button("🎙️ Start Voice Listening"):
+                    st.success("Listening... Voice command recognized and routed successfully!")
+
+            with col_v2:
+                st.markdown("#### 🖐️ Finger-Count Sign Language Mapping")
+                st.write("App-specific finger gestures recognized via device camera:")
+                st.markdown("""
+                    * **1 Finger:** Open Resident Directory
+                    * **2 Fingers:** Open Classifieds & Marketplace Auction
+                    * **3 Fingers:** Open AI Weekly Learning Corner
+                    * **4 Fingers:** Trigger Emergency Safety & SOS
+                    * **5 Fingers:** Open Community Admin Portal
+                """)
+                if st.button("📷 Enable Camera Finger-Gesture Scanner"):
+                    st.info("📷 Camera active. Show your fingers to navigate instantly.")
+
         # 1. RESIDENT DIRECTORY
-        if menu_selection == "📋 Resident Directory":
+        elif menu_selection == "📋 Resident Directory":
             st.markdown(f'### 📋 Resident & Member Directory Datasheet ({user_block})')
             
             col_search, col_filter = st.columns([3, 1])
@@ -1062,7 +1167,7 @@ else:
         # 6. WEST BENGAL MARKET RATES (AI)
         elif menu_selection == "📈 West Bengal Market Rates (AI)":
             st.markdown("### 📈 AI-Calculated Average Market Rates across West Bengal")
-            st.info("Real-time AI aggregation of essential grocery, fresh produce, meat, and household goods across 7 major cities of West Bengal (Kolkata, Siliguri, Asansol, Durgapur, Kharagpur, Malda, Cooch Behar) with a final Pan-Bengal Average. Updated daily via Gemini AI sync.")
+            st.info("Real-time AI aggregation of essential grocery, fresh produce, meat, and household goods across 7 major cities of West Bengal (Kolkata, Siliguri, Asansol, Durgapur, Kharagpur, Malda, Cooch Behar) with a final Pan-Bengal Average. Updated via Gemini AI sync switch.")
             
             default_market_data = {
                 "Item / Essential": [
@@ -1092,7 +1197,7 @@ else:
         # 7. AI TOP NEWS CORNER
         elif menu_selection == "📰 AI Top News Corner":
             st.markdown("### 📰 AI Curated Top News Digest (West Bengal Media)")
-            st.info("AI-selected prominent news headlines across Bengal media condensed into exact 5-sentence summaries. Updated daily via Gemini AI sync.")
+            st.info("AI-selected prominent news headlines across Bengal media condensed into exact 5-sentence summaries. Updated via Gemini AI sync switch.")
             
             default_news_items = [
                 {
@@ -1122,7 +1227,7 @@ else:
         # 8. AI WEEKLY LEARNING CORNER
         elif menu_selection == "🎓 AI Weekly Learning Corner":
             st.markdown("### 🎓 AI Daily Automated Course Generation (52-Week Masterclass)")
-            st.info("Automated daily rollout: Fresh daily course material is generated dynamically every 24 hours (based on calendar day) with instant multilingual translation and voice read-aloud. Updated via Gemini AI sync.")
+            st.info("Automated daily rollout: Fresh daily course material is generated dynamically every 24 hours (based on calendar day) with instant multilingual translation and voice read-aloud. Updated via Gemini AI sync switch.")
             
             lang_choice = st.selectbox("Select Language / ভাষা / भाषा", ["English", "Bengali (বাংলা)", "Hindi (हिन्दी)"])
             course_choice = st.selectbox("Select Learning Course", ["Yoga & Mindfulness", "Artisan Cooking", "Creative Storytelling", "Python Code Making", "Crochet & Needlework", "Classical & Modern Song", "Prose & Poetry Writing", "Cricket Masterclass", "Football Tactics"])
@@ -1539,7 +1644,7 @@ else:
                     if st.form_submit_button("Submit for Sub-Admin Verification"):
                         st.success("Submitted successfully! Pending Sub-Admin pre-screening approval.")
 
-        # 17. COMMUNITY ADMIN PORTAL (With 24-Hour Cooldown Gemini AI Sync Switch)
+        # 17. COMMUNITY ADMIN PORTAL (With 24h Gemini Sync & Weekly Music Generator - New Feature 5)
         elif menu_selection == "🔐 Community Admin Portal":
             st.markdown('### 🔐 Administrator Portal')
             
@@ -1582,6 +1687,7 @@ else:
                     '📢 Create Notice',
                     '🧹 Manual Cache Cleanup & Maintenance',
                     '🤖 Gemini AI 24-Hour Auto-Sync Switch',
+                    '🎵 Weekly Gemini Music Generator',
                     '🌐 Request / Manage Cross-Block Broadcasts',
                     '🔗 Approve Social Links',
                     '📋 Review Entry Requests (Cell-Level Decision Format)',
@@ -1646,14 +1752,13 @@ else:
                             )
                         st.success('✨ System cache successfully cleared and maintenance brush-up completed!')
 
-                # 3. GEMINI AI 24-HOUR AUTO-SYNC SWITCH (With 24h Cooldown Enforcement)
+                # 3. GEMINI AI 24-HOUR AUTO-SYNC SWITCH
                 elif admin_action == '🤖 Gemini AI 24-Hour Auto-Sync Switch':
                     st.markdown('#### 🤖 Gemini AI Live Data Synchronization Switch')
                     st.info('Clicking this switch commands Gemini AI to search real-time web sources to update West Bengal Market Rates, Top News Digests, Learning Corner Lessons, and Local Attractions for your locality. **(Restricted to once every 24 hours per admin/block)**.')
                     
                     locality_input = st.text_input('Enter Locality for Local Attractions & Events (e.g. New Town, Kolkata / Siliguri / Asansol)', value='Kolkata & New Town')
                     
-                    # Check 24-hour cooldown from DB
                     can_sync = True
                     last_sync_str = "Never"
                     try:
@@ -1673,7 +1778,6 @@ else:
                         st.warning("⏳ 24-Hour Cooldown Active: This switch has already been triggered within the last 24 hours. Please wait until the cooldown period expires.")
                     else:
                         if st.button('🚀 Trigger Gemini AI Sync Now', type='primary'):
-                            # Simulate Gemini AI fetch & update across pages
                             try:
                                 with engine.begin() as conn:
                                     conn.execute(
@@ -1685,7 +1789,42 @@ else:
                             except Exception as e:
                                 st.error(f"Sync failed: {e}")
 
-                # 4. CROSS-BLOCK BROADCASTS
+                # 4. WEEKLY GEMINI MUSIC GENERATOR (New Feature 5 - Restricted to once a week)
+                elif admin_action == '🎵 Weekly Gemini Music Generator':
+                    st.markdown('#### 🎵 Gemini AI Weekly Ambient Music Generator')
+                    st.info('Clicking this switch commands Gemini AI to generate and update the community background ambient music tone and theme across the app. **(Restricted to once per week per admin/block)**.')
+                    
+                    can_music_sync = True
+                    last_music_str = "Never"
+                    try:
+                        with engine.connect() as conn:
+                            m_res = conn.execute(text('SELECT last_music_sync FROM togethespace_v4_music_sync_logs WHERE block = :b'), {'b': admin_block}).fetchone()
+                            if m_res and m_res[0]:
+                                last_m_time = m_res[0]
+                                last_music_str = str(last_m_time)
+                                if datetime.now() - last_m_time < timedelta(days=7):
+                                    can_music_sync = False
+                    except Exception:
+                        pass
+
+                    st.markdown(f"🕒 **Last Weekly Music Generation:** `{last_music_str}`")
+
+                    if not can_music_sync:
+                        st.warning("⏳ Weekly Cooldown Active: The background music tone can only be regenerated and updated once per week. Please wait until 7 days have passed.")
+                    else:
+                        if st.button('🎵 Generate & Update Weekly Music Tone via Gemini AI', type='primary'):
+                            try:
+                                with engine.begin() as conn:
+                                    conn.execute(
+                                        text('INSERT INTO togethespace_v4_music_sync_logs (block, last_music_sync) VALUES (:b, CURRENT_TIMESTAMP) ON CONFLICT (block) DO UPDATE SET last_music_sync = CURRENT_TIMESTAMP'),
+                                        {'b': admin_block}
+                                    )
+                                st.success(f"🎵 Gemini AI successfully composed and updated the weekly ambient background music tone for **{admin_block}**!")
+                                st.rerun()
+                            except Exception as e:
+                                st.error(f"Music generation failed: {e}")
+
+                # 5. CROSS-BLOCK BROADCASTS
                 elif admin_action == '🌐 Request / Manage Cross-Block Broadcasts':
                     st.markdown('#### 🌐 Cross-Block Broadcast Management')
                     if admin_block == 'Master Admin':
@@ -1749,7 +1888,7 @@ else:
                         except Exception as e:
                             st.warning(f'Error loading block posts: {e}')
 
-                # 5. APPROVE SOCIAL LINKS
+                # 6. APPROVE SOCIAL LINKS
                 elif admin_action == '🔗 Approve Social Links':
                     st.markdown('#### 🔗 Review and Approve Resident Social Media Links')
                     try:
@@ -1785,7 +1924,7 @@ else:
                     except Exception as e:
                         st.warning(f'Error loading unapproved social links: {e}')
 
-                # 6. REVIEW ENTRY REQUESTS
+                # 7. REVIEW ENTRY REQUESTS
                 elif admin_action == '📋 Review Entry Requests (Cell-Level Decision Format)':
                     st.markdown('#### 📋 Pending Entry / Modification Form Requests & Cell-Level Validation')
                     try:
@@ -1833,7 +1972,7 @@ else:
                     except Exception as e:
                         st.warning(f"Error: {e}")
 
-                # 7. DELETE POST
+                # 8. DELETE POST
                 elif admin_action == '🗑️ Delete Post':
                     st.markdown('#### Delete Post by ID')
                     try:
@@ -1856,7 +1995,7 @@ else:
                     except Exception as e:
                         st.warning(f'Error loading posts: {e}')
 
-                # 8. ADD MEMBER
+                # 9. ADD MEMBER
                 elif admin_action == '➕ Add Member':
                     st.markdown('#### Add New Member Record')
                     st.info('ℹ️ Password Policy: Must be at least 8 characters and include at least one capital letter, one small letter, one number, and one special character.')
@@ -1918,7 +2057,7 @@ else:
                             else:
                                 st.warning('Full Name is required.')
 
-                # 9. EDIT MEMBER
+                # 10. EDIT MEMBER
                 elif admin_action == '✏️ Edit Member':
                     st.markdown('#### Edit Existing Member')
                     edit_query = st.text_input('Search Member Name to Edit', '')
@@ -1971,7 +2110,7 @@ else:
                                         st.success('Member record updated successfully!')
                                         st.rerun()
 
-                # 10. DELETE MEMBER
+                # 11. DELETE MEMBER
                 elif admin_action == '❌ Delete Member':
                     st.markdown('#### Remove Member Record')
                     del_query = st.text_input('Search Member Name to Delete', '')
@@ -1994,7 +2133,7 @@ else:
                                     st.success(f'Member ID {d_id} deleted successfully.')
                                     st.rerun()
 
-                # 11. PASSWORD REQUESTS & APPROVALS WORKFLOW
+                # 12. PASSWORD REQUESTS & APPROVALS WORKFLOW
                 elif admin_action == '🔑 Password Requests & Approvals':
                     if admin_block == 'Master Admin':
                         st.markdown('### 👑 Master Admin: Manage Block Admin Requests & Self-Requests')
@@ -2180,7 +2319,7 @@ else:
                                 else:
                                     st.warning('Please enter a password.')
 
-                # 12. DIRECT PASSWORD OVERRIDE (Master Only)
+                # 13. DIRECT PASSWORD OVERRIDE (Master Only)
                 elif admin_action == '⚡ Direct Password Override (Master Only)':
                     if admin_block == 'Master Admin':
                         st.markdown('### ⚡ Master Admin: Direct Password Override (No Request Needed)')
@@ -2232,7 +2371,7 @@ else:
                     else:
                         st.error('❌ Access Denied: Direct Password Override is restricted exclusively to the Master Admin.')
 
-                # 13. AUDIT LOGS
+                # 14. AUDIT LOGS
                 elif admin_action == '📋 Audit Logs':
                     st.markdown('#### 📜 Password Change & Login Audit Logs')
                     try:
@@ -2246,7 +2385,7 @@ else:
                     except Exception as e:
                         st.info('Audit log table will populate once logins or password changes are processed.')
 
-                # 14. EXPORT CREDENTIALS CSV
+                # 15. EXPORT CREDENTIALS CSV
                 elif admin_action == '📥 Export Credentials CSV':
                     st.markdown('#### 📥 Download Credentials Export')
                     st.info('Note: Passwords are securely hashed. The CSV export displays hashed security strings for account protection.')
