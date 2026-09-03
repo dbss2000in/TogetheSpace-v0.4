@@ -791,26 +791,39 @@ else:
             st.dataframe(pd.DataFrame(facility_index_data), use_container_width=True)
             render_alpona_motif()
 
-        # 0.1 SIGN LANGUAGE & VOICE HUB (Fully Functional Voice & Camera Gesture Integration)
+        # 0.1 SIGN LANGUAGE & VOICE HUB (Fully Functional Voice & Camera Gesture with Direct Navigation Mapping)
         elif menu_selection == "🎙️ Sign Language & Voice Hub":
             st.markdown("### 🎙️ Sign Language (Finger Gesture) & Voice Command Hub")
-            st.info("Accessibility hub for residents who cannot type. Use browser voice dictation or app-specific finger-count gestures to navigate effortlessly.")
+            st.info("Accessibility hub for residents who cannot type. Use browser voice dictation or app-specific finger-count gestures (1 to 10 fingers or spoken numbers/keywords) to navigate effortlessly.")
 
             col_v1, col_v2 = st.columns(2)
             with col_v1:
                 st.markdown("#### 🗣️ Fully Functional Voice Command Navigation")
-                st.write("Click 'Start Listening', speak clearly (e.g. 'Directory', 'Marketplace', 'Learning', 'Admin', 'SOS'), and watch the app navigate instantly.")
+                st.write("Click 'Start Voice Listening', speak numbers (1-10) or keywords (e.g. 'Directory', 'Marketplace', 'Learning', 'Admin', 'SOS'), and watch the app navigate instantly.")
                 
                 voice_html = """
                 <div style="background: #fdf6ec; padding: 18px; border-radius: 10px; border: 2px solid #8b0000; text-align: center;">
                     <p style="font-weight: 700; color: #8b0000; font-size: 1.1em;" id="voice-status">🎤 Voice Command Ready</p>
-                    <p style="font-size: 0.95em; color: #333;" id="voice-transcript">Say: "Directory", "Marketplace", "Learning", "Admin", or "SOS"</p>
+                    <p style="font-size: 0.95em; color: #333;" id="voice-transcript">Say: Numbers 1-10 or "Directory", "Marketplace", "Learning", "Admin", "SOS"</p>
                     <button id="listen-btn" style="background: #8b0000; color: white; border: none; padding: 10px 20px; border-radius: 6px; cursor: pointer; font-weight: 700; font-family: 'Poppins', sans-serif; margin-top: 8px;">🎙️ Start Voice Listening</button>
                 </div>
                 <script>
                   const statusEl = document.getElementById('voice-status');
                   const transcriptEl = document.getElementById('voice-transcript');
                   const btn = document.getElementById('listen-btn');
+
+                  const pageMapping = {
+                    "1": "📋 Resident Directory", "one": "📋 Resident Directory", "directory": "📋 Resident Directory", "residents": "📋 Resident Directory",
+                    "2": "🛒 Classifieds & Marketplace (Auction)", "two": "🛒 Classifieds & Marketplace (Auction)", "marketplace": "🛒 Classifieds & Marketplace (Auction)", "auction": "🛒 Classifieds & Marketplace (Auction)",
+                    "3": "🎓 AI Weekly Learning Corner", "three": "🎓 AI Weekly Learning Corner", "learning": "🎓 AI Weekly Learning Corner", "course": "🎓 AI Weekly Learning Corner",
+                    "4": "🚨 Safety & SOS Alerts", "four": "🚨 Safety & SOS Alerts", "sos": "🚨 Safety & SOS Alerts", "emergency": "🚨 Safety & SOS Alerts",
+                    "5": "🔐 Community Admin Portal", "five": "🔐 Community Admin Portal", "admin": "🔐 Community Admin Portal", "portal": "🔐 Community Admin Portal",
+                    "6": "🧭 Facility & Service Index", "six": "🧭 Facility & Service Index", "facility": "🧭 Facility & Service Index",
+                    "7": "👔 Job Match & Employment Directory", "seven": "👔 Job Match & Employment Directory", "job": "👔 Job Match & Employment Directory",
+                    "8": "🏡 Communication & Feed", "eight": "🏡 Communication & Feed", "feed": "🏡 Communication & Feed",
+                    "9": "🎥 Media Corner", "nine": "🎥 Media Corner", "media": "🎥 Media Corner",
+                    "10": "📊 Community Polls & Voting", "ten": "📊 Community Polls & Voting", "polls": "📊 Community Polls & Voting", "voting": "📊 Community Polls & Voting"
+                  };
 
                   if (!('webkitSpeechRecognition' in window) && !('SpeechRecognition' in window)) {
                     statusEl.innerText = "Speech Recognition not supported in this browser.";
@@ -834,31 +847,25 @@ else:
                     };
 
                     recognition.onresult = (event) => {
-                      const text = event.results[0][0].transcript.toLowerCase();
-                      transcriptEl.innerText = "Heard: \"" + text + "\"";
-                      statusEl.innerText = "✅ Command recognized! Navigating...";
+                      const transcript = event.results[0][0].transcript.toLowerCase().trim();
+                      transcriptEl.innerText = "Heard: \"" + transcript + "\"";
+                      
+                      let targetPage = "";
+                      for (let key in pageMapping) {
+                        if (transcript.includes(key)) {
+                          targetPage = pageMapping[key];
+                          break;
+                        }
+                      }
 
-                      setTimeout(() => {
-                        let target = "";
-                        if (text.includes('directory') || text.includes('residents')) {
-                          target = '📋 Resident Directory';
-                        } else if (text.includes('market') || text.includes('rates')) {
-                          target = '📈 West Bengal Market Rates (AI)';
-                        } else if (text.includes('news')) {
-                          target = '📰 AI Top News Corner';
-                        } else if (text.includes('learning') || text.includes('course')) {
-                          target = '🎓 AI Weekly Learning Corner';
-                        } else if (text.includes('admin') || text.includes('portal')) {
-                          target = '🔐 Community Admin Portal';
-                        } else if (text.includes('sos') || text.includes('emergency')) {
-                          target = '🚨 Safety & SOS Alerts';
-                        }
-                        if (target) {
-                          window.parent.location.href = window.parent.location.origin + window.parent.location.pathname + '?page=' + encodeURIComponent(target);
-                        } else {
-                          statusEl.innerText = "❓ Command not recognized: \"" + text + "\"";
-                        }
-                      }, 600);
+                      if (targetPage) {
+                        statusEl.innerText = "✅ Navigating to: " + targetPage;
+                        setTimeout(() => {
+                          window.parent.location.href = window.parent.location.origin + window.parent.location.pathname + '?page=' + encodeURIComponent(targetPage);
+                        }, 700);
+                      } else {
+                        statusEl.innerText = "❓ Command not matched: \"" + transcript + "\". Try saying '1' or 'Directory'";
+                      }
                     };
 
                     recognition.onerror = (event) => {
@@ -871,13 +878,18 @@ else:
 
             with col_v2:
                 st.markdown("#### 🖐️ Functional Camera Finger-Gesture Scanner")
-                st.write("Show 1 to 5 fingers to your webcam to navigate automatically:")
+                st.write("Show 1 to 10 fingers to your webcam to navigate automatically:")
                 st.markdown("""
                     * **1 Finger:** Resident Directory
                     * **2 Fingers:** Marketplace Auction
                     * **3 Fingers:** AI Learning Corner
                     * **4 Fingers:** Safety & SOS Alerts
                     * **5 Fingers:** Community Admin Portal
+                    * **6 Fingers:** Facility & Service Index
+                    * **7 Fingers:** Job Match & Employment
+                    * **8 Fingers:** Communication & Feed
+                    * **9 Fingers:** Media Corner
+                    * **10 Fingers:** Community Polls & Voting
                 """)
                 
                 gesture_html = """
@@ -895,46 +907,70 @@ else:
                   let cameraStarted = false;
                   let lastDetected = 0;
 
-                  function countRaisedFingers(landmarks) {
-                    let fingers = 0;
-                    if (landmarks[8].y < landmarks[6].y) fingers++; // Index
-                    if (landmarks[12].y < landmarks[10].y) fingers++; // Middle
-                    if (landmarks[16].y < landmarks[14].y) fingers++; // Ring
-                    if (landmarks[20].y < landmarks[18].y) fingers++; // Pinky
-                    if (Math.abs(landmarks[4].x - landmarks[17].x) > 0.1) fingers++; // Thumb
-                    return Math.min(Math.max(fingers, 1), 5);
+                  const fingerPageMap = {
+                    1: '📋 Resident Directory',
+                    2: '🛒 Classifieds & Marketplace (Auction)',
+                    3: '🎓 AI Weekly Learning Corner',
+                    4: '🚨 Safety & SOS Alerts',
+                    5: '🔐 Community Admin Portal',
+                    6: '🧭 Facility & Service Index',
+                    7: '👔 Job Match & Employment Directory',
+                    8: '🏡 Communication & Feed',
+                    9: '🎥 Media Corner',
+                    10: '📊 Community Polls & Voting'
+                  };
+
+                  function countAllFingers(landmarks, handedness) {
+                    let count = 0;
+                    // Four fingers (Index, Middle, Ring, Pinky) - tip y vs pip y
+                    if (landmarks[8].y < landmarks[6].y) count++;
+                    if (landmarks[12].y < landmarks[10].y) count++;
+                    if (landmarks[16].y < landmarks[14].y) count++;
+                    if (landmarks[20].y < landmarks[18].y) count++;
+
+                    // Thumb check based on handedness
+                    const isRightHand = handedness === 'Right';
+                    if (isRightHand) {
+                      if (landmarks[4].x < landmarks[3].x) count++;
+                    } else {
+                      if (landmarks[4].x > landmarks[3].x) count++;
+                    }
+                    return count;
                   }
 
                   const hands = new Hands({
                     locateFile: (file) => `https://cdn.jsdelivr.net/npm/@mediapipe/hands/${file}`
                   });
                   hands.setOptions({
-                    maxNumHands: 1,
+                    maxNumHands: 2,
                     modelComplexity: 1,
                     minDetectionConfidence: 0.65,
                     minTrackingConfidence: 0.65
                   });
+                  
                   hands.onResults((results) => {
                     if (results.multiHandLandmarks && results.multiHandLandmarks.length > 0) {
-                      const count = countRaisedFingers(results.multiHandLandmarks[0]);
-                      statusElement.innerText = `Detected Fingers: ${count} 🖐️ (Navigating...)`;
+                      let totalFingers = 0;
+                      for (let i = 0; i < results.multiHandLandmarks.length; i++) {
+                        const hLabel = results.multiHandedness[i].label;
+                        totalFingers += countAllFingers(results.multiHandLandmarks[i], hLabel);
+                      }
+                      totalFingers = Math.min(Math.max(totalFingers, 1), 10);
+                      statusElement.innerText = `Detected Fingers: ${totalFingers} 🖐️ (Navigating...)`;
                       
                       const now = Date.now();
-                      if (now - lastDetected > 2000) { 
+                      if (now - lastDetected > 2200) { 
                         lastDetected = now;
-                        let target = "";
-                        if (count === 1) target = '📋 Resident Directory';
-                        else if (count === 2) target = '🛒 Classifieds & Marketplace (Auction)';
-                        else if (count === 3) target = '🎓 AI Weekly Learning Corner';
-                        else if (count === 4) target = '🚨 Safety & SOS Alerts';
-                        else if (count === 5) target = '🔐 Community Admin Portal';
-
-                        if (target) {
-                          window.parent.location.href = window.parent.location.origin + window.parent.location.pathname + '?page=' + encodeURIComponent(target);
+                        const targetPage = fingerPageMap[totalFingers];
+                        if (targetPage) {
+                          statusElement.innerText = "✅ Navigating to: " + targetPage;
+                          setTimeout(() => {
+                            window.parent.location.href = window.parent.location.origin + window.parent.location.pathname + '?page=' + encodeURIComponent(targetPage);
+                          }, 600);
                         }
                       }
                     } else {
-                      statusElement.innerText = "Show 1-5 fingers to camera";
+                      statusElement.innerText = "Show 1-10 fingers to camera";
                     }
                   });
 
@@ -2627,7 +2663,7 @@ else:
                                 label=f"📥 Download {admin_block} Credentials CSV",
                                 data=csv_data,
                                 file_name=f"togethespace_credentials_{admin_block.lower().replace('_', '_')}.csv",
-                                mime="text/csv",
+                                mime="text/css",
                                 use_container_width=True
                             )
                     except Exception as e:
