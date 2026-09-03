@@ -476,6 +476,21 @@ else:
             }
         }
 
+        # --- QUERY PARAMS PAGE ROUTING SYNC FOR ACCESSIBILITY / GESTURES ---
+        if 'page' in st.query_params:
+            p_val = st.query_params['page']
+            valid_pages = [
+                "🧭 Facility & Service Index", "🎙️ Sign Language & Voice Hub", "📋 Resident Directory",
+                "🏡 Communication & Feed", "🎥 Media Corner", "🤝 Donation & Give-Away",
+                "💖 Admin Thanks & Support", "📈 West Bengal Market Rates (AI)", "📰 AI Top News Corner",
+                "🎓 AI Weekly Learning Corner", "🛒 Classifieds & Marketplace (Auction)",
+                "👔 Job Match & Employment Directory", "✉️ Personalized Event Invitations",
+                "🛠️ Helpdesk & Tickets", "📅 Facility Booking & Utilities", "🚨 Safety & SOS Alerts",
+                "📊 Community Polls & Voting", "🌟 Local Attractions & Events", "🔐 Community Admin Portal"
+            ]
+            if p_val in valid_pages:
+                st.session_state['current_page'] = p_val
+
         # --- AUTHENTICATION GATE ---
         if 'authenticated' not in st.session_state:
             st.session_state['authenticated'] = False
@@ -787,7 +802,7 @@ else:
                 st.markdown("#### 🗣️ Fully Functional Voice Command Navigation")
                 st.write("Click 'Start Listening', speak clearly (e.g. 'Directory', 'Marketplace', 'Learning', 'Admin', 'SOS'), and watch the app navigate instantly.")
                 
-                # Interactive Web Speech API HTML Component
+                # Interactive Web Speech API HTML Component with URL query param navigation
                 voice_html = """
                 <div style="background: #fdf6ec; padding: 18px; border-radius: 10px; border: 2px solid #8b0000; text-align: center;">
                     <p style="font-weight: 700; color: #8b0000; font-size: 1.1em;" id="voice-status">🎤 Voice Command Ready</p>
@@ -818,23 +833,25 @@ else:
                     recognition.onresult = (event) => {
                       const text = event.results[0][0].transcript.toLowerCase();
                       transcriptEl.innerText = "Heard: \"" + text + "\"";
-                      statusEl.innerText = "✅ Command recognized!";
+                      statusEl.innerText = "✅ Command recognized! Navigating...";
 
-                      if (text.includes('directory') || text.includes('residents')) {
-                        window.parent.postMessage({type: 'streamlit:set_page', page: '📋 Resident Directory'}, '*');
-                      } else if (text.includes('market') || text.includes('rates')) {
-                        window.parent.postMessage({type: 'streamlit:set_page', page: '📈 West Bengal Market Rates (AI)'}, '*');
-                      } else if (text.includes('news')) {
-                        window.parent.postMessage({type: 'streamlit:set_page', page: '📰 AI Top News Corner'}, '*');
-                      } else if (text.includes('learning') || text.includes('course')) {
-                        window.parent.postMessage({type: 'streamlit:set_page', page: '🎓 AI Weekly Learning Corner'}, '*');
-                      } else if (text.includes('admin') || text.includes('portal')) {
-                        window.parent.postMessage({type: 'streamlit:set_page', page: '🔐 Community Admin Portal'}, '*');
-                      } else if (text.includes('sos') || text.includes('emergency')) {
-                        window.parent.postMessage({type: 'streamlit:set_page', page: '🚨 Safety & SOS Alerts'}, '*');
-                      } else {
-                        statusEl.innerText = "❓ Command not recognized: \"" + text + "\". Try saying 'Directory'";
-                      }
+                      setTimeout(() => {
+                        if (text.includes('directory') || text.includes('residents')) {
+                          window.parent.location.search = '?page=' + encodeURIComponent('📋 Resident Directory');
+                        } else if (text.includes('market') || text.includes('rates')) {
+                          window.parent.location.search = '?page=' + encodeURIComponent('📈 West Bengal Market Rates (AI)');
+                        } else if (text.includes('news')) {
+                          window.parent.location.search = '?page=' + encodeURIComponent('📰 AI Top News Corner');
+                        } else if (text.includes('learning') || text.includes('course')) {
+                          window.parent.location.search = '?page=' + encodeURIComponent('🎓 AI Weekly Learning Corner');
+                        } else if (text.includes('admin') || text.includes('portal')) {
+                          window.parent.location.search = '?page=' + encodeURIComponent('🔐 Community Admin Portal');
+                        } else if (text.includes('sos') || text.includes('emergency')) {
+                          window.parent.location.search = '?page=' + encodeURIComponent('🚨 Safety & SOS Alerts');
+                        } else {
+                          statusEl.innerText = "❓ Command not recognized: \"" + text + "\". Try saying 'Directory'";
+                        }
+                      }, 600);
                     };
 
                     recognition.onerror = (event) => {
@@ -856,7 +873,7 @@ else:
                     * **5 Fingers:** Community Admin Portal
                 """)
                 
-                # Interactive MediaPipe Hands Camera HTML Component
+                # Interactive MediaPipe Hands Camera HTML Component with URL query param navigation
                 gesture_html = """
                 <div style="background: #eaf4ed; padding: 12px; border-radius: 10px; border: 2px solid #1b5e20; text-align: center;">
                     <video id="webcam" autoplay playsinline width="260" height="190" style="border-radius: 8px; transform: scaleX(-1); border: 1px solid #cbd5e1;"></video>
@@ -870,6 +887,7 @@ else:
                   const statusElement = document.getElementById('gesture-status');
                   const camBtn = document.getElementById('cam-btn');
                   let cameraStarted = false;
+                  let lastDetected = 0;
 
                   function countRaisedFingers(landmarks) {
                     let fingers = 0;
@@ -887,23 +905,28 @@ else:
                   hands.setOptions({
                     maxNumHands: 1,
                     modelComplexity: 1,
-                    minDetectionConfidence: 0.6,
-                    minTrackingConfidence: 0.6
+                    minDetectionConfidence: 0.65,
+                    minTrackingConfidence: 0.65
                   });
                   hands.onResults((results) => {
                     if (results.multiHandLandmarks && results.multiHandLandmarks.length > 0) {
                       const count = countRaisedFingers(results.multiHandLandmarks[0]);
-                      statusElement.innerText = `Detected Fingers: ${count} 🖐️`;
-                      if (count === 1) {
-                        window.parent.postMessage({type: 'streamlit:set_page', page: '📋 Resident Directory'}, '*');
-                      } else if (count === 2) {
-                        window.parent.postMessage({type: 'streamlit:set_page', page: '🛒 Classifieds & Marketplace (Auction)'}, '*');
-                      } else if (count === 3) {
-                        window.parent.postMessage({type: 'streamlit:set_page', page: '🎓 AI Weekly Learning Corner'}, '*');
-                      } else if (count === 4) {
-                        window.parent.postMessage({type: 'streamlit:set_page', page: '🚨 Safety & SOS Alerts'}, '*');
-                      } else if (count === 5) {
-                        window.parent.postMessage({type: 'streamlit:set_page', page: '🔐 Community Admin Portal'}, '*');
+                      statusElement.innerText = `Detected Fingers: ${count} 🖐️ (Navigating...)`;
+                      
+                      const now = Date.now();
+                      if (now - lastDetected > 1500) { // Throttle navigation to prevent rapid looping
+                        lastDetected = now;
+                        if (count === 1) {
+                          window.parent.location.search = '?page=' + encodeURIComponent('📋 Resident Directory');
+                        } else if (count === 2) {
+                          window.parent.location.search = '?page=' + encodeURIComponent('🛒 Classifieds & Marketplace (Auction)');
+                        } else if (count === 3) {
+                          window.parent.location.search = '?page=' + encodeURIComponent('🎓 AI Weekly Learning Corner');
+                        } else if (count === 4) {
+                          window.parent.location.search = '?page=' + encodeURIComponent('🚨 Safety & SOS Alerts');
+                        } else if (count === 5) {
+                          window.parent.location.search = '?page=' + encodeURIComponent('🔐 Community Admin Portal');
+                        }
                       }
                     } else {
                       statusElement.innerText = "Show 1-5 fingers to camera";
@@ -1826,7 +1849,7 @@ else:
                         st.success("Submitted successfully! Pending Sub-Admin pre-screening approval.")
             render_alpona_motif()
 
-        # 17. COMMUNITY ADMIN PORTAL (Master Admin Unrestricted Overrides & Cooldown Bypass)
+        # 17. COMMUNITY ADMIN PORTAL
         elif menu_selection == "🔐 Community Admin Portal":
             st.markdown('### 🔐 Administrator Portal')
             
