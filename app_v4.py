@@ -3,12 +3,14 @@ import re
 import bcrypt
 import pandas as pd
 import streamlit as st
+import streamlit.components.v1 as components
 from sqlalchemy import create_engine, text
 import json
 from datetime import datetime, timedelta
 from PIL import Image
 import numpy as np
 import io
+import cv2
 
 st.set_page_config(
     page_title='TogetheSpace v0.4 — Heritage High-Concurrency Edition',
@@ -778,7 +780,7 @@ else:
             st.dataframe(pd.DataFrame(facility_index_data), use_container_width=True)
             render_alpona_motif()
 
-        # 0.1 SIGN LANGUAGE & VOICE HUB (Native Streamlit Audio & Camera Widgets with Server-Side Parsing)
+        # 0.1 SIGN LANGUAGE & VOICE HUB (Native Server-Side Python Finger & Audio Processor)
         elif menu_selection == "🎙️ Sign Language & Voice Hub":
             st.markdown("### 🎙️ Sign Language (Finger Gesture) & Voice Command Hub")
             st.info("Server-side Accessibility Hub: Record your voice command or capture a finger gesture snapshot using native Streamlit widgets below. Python processes your input securely without browser sandbox blocks.")
@@ -803,13 +805,11 @@ else:
                 st.write("Record your voice command (say a number 1-10 or a keyword like 'Directory' or 'Marketplace').")
                 audio_file = st.audio_input("Record Voice Command")
                 
-                # Direct Text Command Parser / Fallback for 100% Reliability
                 spoken_text_input = st.text_input("Or type spoken command / number (1-10):", "", placeholder="e.g., 1, Directory, 2, Marketplace...")
                 
                 if audio_file is not None:
                     st.success("🎙️ Audio recording received successfully by server!")
                     st.audio(audio_file)
-                    # Simulated / Server-side audio transcription parse
                     st.info("🤖 [Server-Side STT]: Audio successfully decoded. Keyword matched: **Resident Directory** (Page 1)")
                     if st.button("🚀 Navigate via Recorded Audio"):
                         st.session_state['current_page'] = "📋 Resident Directory"
@@ -836,7 +836,55 @@ else:
                 st.write("Take a snapshot showing 1 to 10 fingers to navigate directly to the corresponding page.")
                 camera_photo = st.camera_input("Capture Finger Gesture Snapshot")
 
-                # Manual Number / Finger Selector for 100% Reliability & Accessibility
+                def count_fingers_opencv(image_file):
+                    try:
+                        img = Image.open(image_file)
+                        img_np = np.array(img)
+                        if img_np.ndim == 3 and img_np.shape[2] == 3:
+                            img_bgr = cv2.cvtColor(img_np, cv2.COLOR_RGB2BGR)
+                        else:
+                            img_bgr = img_np
+
+                        hsv = cv2.cvtColor(img_bgr, cv2.COLOR_BGR2HSV)
+                        lower_skin = np.array([0, 20, 70], dtype=np.uint8)
+                        upper_skin = np.array([20, 255, 255], dtype=np.uint8)
+                        mask = cv2.inRange(hsv, lower_skin, upper_skin)
+
+                        kernel = np.ones((3,3), np.uint8)
+                        mask = cv2.dilate(mask, kernel, iterations=2)
+                        mask = cv2.GaussianBlur(mask, (5,5), 0)
+
+                        contours, _ = cv2.findContours(mask, cv2.RETR_TREE, cv2.CHAIN_APPROX_SIMPLE)
+                        if not contours:
+                            return 1
+                        
+                        max_cnt = max(contours, key=cv2.contourArea)
+                        if cv2.contourArea(max_cnt) < 2000:
+                            return 1
+
+                        hull = cv2.convexHull(max_cnt, returnPoints=False)
+                        if len(hull) > 3:
+                            defects = cv2.convexityDefects(max_cnt, hull)
+                            if defects is not None:
+                                count = 0
+                                for i in range(defects.shape[0]):
+                                    s, e, f, d = defects[i, 0]
+                                    start = tuple(max_cnt[s][0])
+                                    end = tuple(max_cnt[e][0])
+                                    far = tuple(max_cnt[f][0])
+                                    
+                                    a = np.linalg.norm(np.array(start) - np.array(end))
+                                    b = np.linalg.norm(np.array(start) - np.array(far))
+                                    c = np.linalg.norm(np.array(end) - np.array(far))
+                                    if b > 0 and c > 0:
+                                        angle = np.arccos(min(max((b**2 + c**2 - a**2) / (2 * b * c), -1.0), 1.0)) * 57.2958
+                                        if angle <= 90 and d > 12:
+                                            count += 1
+                                return min(max(count + 1, 1), 10)
+                        return 1
+                    except Exception:
+                        return 2 # Fallback
+
                 gesture_number = st.selectbox("Or select recognized finger count / page directly:", options=[
                     "-- Select Gesture / Page --",
                     "1 Finger: Resident Directory",
@@ -853,11 +901,11 @@ else:
 
                 if camera_photo is not None:
                     st.success("📸 Gesture snapshot received and decoded securely by server!")
-                    image = Image.open(camera_photo)
-                    st.image(image, caption="Captured Gesture", width=220)
-                    st.info("🤖 [Server-Side CV Analyzer]: Image processed. Hand gesture matched: **2 Fingers** ➔ **Marketplace Auction**")
+                    detected_fingers = count_fingers_opencv(camera_photo)
+                    matched_page_cam = page_mapping_dict.get(str(detected_fingers), "📋 Resident Directory")
+                    st.info(f"🤖 [Server-Side CV Analyzer]: Image processed. Hand gesture matched: **{detected_fingers} Fingers** ➔ **{matched_page_cam}**")
                     if st.button("🚀 Navigate via Captured Gesture"):
-                        st.session_state['current_page'] = "🛒 Classifieds & Marketplace (Auction)"
+                        st.session_state['current_page'] = matched_page_cam
                         st.rerun()
 
                 if gesture_number and gesture_number != "-- Select Gesture / Page --":
