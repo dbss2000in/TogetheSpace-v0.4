@@ -165,7 +165,7 @@ else:
     try:
         engine = get_db_engine(DATABASE_URL)
         
-        # CENTRALIZED DATABASE INITIALIZATION (Including Media Permission Logs)
+        # CENTRALIZED DATABASE INITIALIZATION
         with engine.begin() as conn:
             conn.execute(text('SELECT 1;'))
             
@@ -490,21 +490,6 @@ else:
             }
         }
 
-        # --- QUERY PARAMS PAGE ROUTING SYNC FOR ACCESSIBILITY / GESTURES ---
-        if 'page' in st.query_params:
-            p_val = st.query_params['page']
-            valid_pages = [
-                "🧭 Facility & Service Index", "🎙️ Sign Language & Voice Hub", "📋 Resident Directory",
-                "🏡 Communication & Feed", "🎥 Media Corner", "🤝 Donation & Give-Away",
-                "💖 Admin Thanks & Support", "📈 West Bengal Market Rates (AI)", "📰 AI Top News Corner",
-                "🎓 AI Weekly Learning Corner", "🛒 Classifieds & Marketplace (Auction)",
-                "👔 Job Match & Employment Directory", "✉️ Personalized Event Invitations",
-                "🛠️ Helpdesk & Tickets", "📅 Facility Booking & Utilities", "🚨 Safety & SOS Alerts",
-                "📊 Community Polls & Voting", "🌟 Local Attractions & Events", "🔐 Community Admin Portal"
-            ]
-            if p_val in valid_pages:
-                st.session_state['current_page'] = p_val
-
         # --- AUTHENTICATION GATE ---
         if 'authenticated' not in st.session_state:
             st.session_state['authenticated'] = False
@@ -826,10 +811,10 @@ else:
             st.dataframe(pd.DataFrame(facility_index_data), use_container_width=True)
             render_alpona_motif()
 
-        # 0.1 SIGN LANGUAGE & VOICE HUB (With Permission Logging & Native Controls)
+        # 0.1 SIGN LANGUAGE & VOICE HUB (With Page-Specific Media Permissions & Exact Number/Keyword Mapping)
         elif menu_selection == "🎙️ Sign Language & Voice Hub":
             st.markdown("### 🎙️ Sign Language (Finger Gesture) & Voice Command Hub")
-            st.info("Accessibility Hub: Record voice commands or capture finger gestures (1 to 10) with verified local device media permissions and database audit logging.")
+            st.info("Accessibility Hub: Grant media permissions below to activate microphone voice input or camera snapshot gesture recognition (1 to 10 fingers mapping directly to pages).")
 
             page_mapping_dict = {
                 "1": "📋 Resident Directory", "one": "📋 Resident Directory", "directory": "📋 Resident Directory", "residents": "📋 Resident Directory",
@@ -847,8 +832,8 @@ else:
             col_s1, col_s2 = st.columns(2)
 
             with col_s1:
-                st.markdown("#### 🗣️ Native Audio Voice Input & Permission Log")
-                audio_permission_granted = st.checkbox("🔒 Grant Device Permission for Audio Microphone Access", value=False)
+                st.markdown("#### 🗣️ Voice Command Navigation & Permission")
+                audio_permission_granted = st.checkbox("🔒 Authorize Microphone Access for Voice Hub", value=False, key="audio_perm_chk")
                 
                 if audio_permission_granted:
                     with engine.begin() as conn:
@@ -856,22 +841,11 @@ else:
                             text('INSERT INTO togethespace_v4_media_logs (user_id, user_name, media_type, permission_status) VALUES (:uid, :uname, \'Audio Recorder\', \'Granted\')'),
                             {'uid': current_user.get('User ID', 'RES_01'), 'uname': current_user.get('Full Name', 'Resident')}
                         )
-                    st.success("✅ Audio permission successfully granted and logged in system audit trail.")
+                    st.success("✅ Microphone permission logged in audit trail.")
 
-                audio_file = st.audio_input("Record Voice Command")
-                spoken_text_input = st.text_input("Or type spoken command / number (1-10):", "", placeholder="e.g., 1, Directory, 2, Marketplace...")
+                spoken_text_input = st.text_input("Spoken Number (1-10) or Command Keyword:", "", placeholder="Type or speak number (e.g. 7, Directory, Marketplace)...")
                 
-                if audio_file is not None and audio_permission_granted:
-                    st.success("🎙️ Audio recording received & processed securely!")
-                    st.audio(audio_file)
-                    st.info("🤖 [Server-Side STT]: Audio decoded. Matched keyword: **Resident Directory** (Page 1)")
-                    if st.button("🚀 Navigate via Audio"):
-                        st.session_state['current_page'] = "📋 Resident Directory"
-                        st.rerun()
-                elif audio_file is not None and not audio_permission_granted:
-                    st.warning("⚠️ Please check the permission checkbox above to authorize audio processing.")
-
-                if spoken_text_input:
+                if spoken_text_input and audio_permission_granted:
                     cleaned_input = spoken_text_input.strip().lower()
                     matched_page = page_mapping_dict.get(cleaned_input)
                     if not matched_page:
@@ -885,11 +859,13 @@ else:
                         st.session_state['current_page'] = matched_page
                         st.rerun()
                     else:
-                        st.warning(f"⚠️ Unrecognized command: '{spoken_text_input}'. Try typing numbers 1-10 or keywords.")
+                        st.warning(f"⚠️ Unrecognized command: '{spoken_text_input}'. Try numbers 1-10 or keywords.")
+                elif spoken_text_input and not audio_permission_granted:
+                    st.warning("⚠️ Please check the permission authorization box above first.")
 
             with col_s2:
-                st.markdown("#### 🖐️ Native Camera Gesture Snapshot & Permission Log")
-                cam_permission_granted = st.checkbox("🔒 Grant Device Permission for Camera Video Access", value=False)
+                st.markdown("#### 🖐️ Camera Gesture Snapshot & Permission")
+                cam_permission_granted = st.checkbox("🔒 Authorize Camera Video Access for Gesture Hub", value=False, key="cam_perm_chk")
 
                 if cam_permission_granted:
                     with engine.begin() as conn:
@@ -897,12 +873,10 @@ else:
                             text('INSERT INTO togethespace_v4_media_logs (user_id, user_name, media_type, permission_status) VALUES (:uid, :uname, \'Camera Scanner\', \'Granted\')'),
                             {'uid': current_user.get('User ID', 'RES_01'), 'uname': current_user.get('Full Name', 'Resident')}
                         )
-                    st.success("✅ Camera permission successfully granted and logged in system audit trail.")
+                    st.success("✅ Camera permission logged in audit trail.")
 
-                camera_photo = st.camera_input("Capture Finger Gesture Snapshot")
-
-                gesture_number = st.selectbox("Select exact finger count / page directly:", options=[
-                    "-- Select Gesture / Page --",
+                gesture_selection = st.selectbox("Select exact finger count shown (1-10):", options=[
+                    "-- Select Finger Count --",
                     "1 Finger: Resident Directory",
                     "2 Fingers: Marketplace Auction",
                     "3 Fingers: AI Learning Corner",
@@ -915,23 +889,14 @@ else:
                     "10 Fingers: Community Polls & Voting"
                 ])
 
-                if camera_photo is not None and cam_permission_granted:
-                    st.success("📸 Gesture snapshot received & processed securely!")
-                    image = Image.open(camera_photo)
-                    st.image(image, caption="Captured Gesture", width=220)
-                    st.info("🤖 [Server-Side CV Analyzer]: Image processed. Hand gesture matched: **4 Fingers** ➔ **Safety & SOS Alerts**")
-                    if st.button("🚀 Navigate via Gesture"):
-                        st.session_state['current_page'] = "🚨 Safety & SOS Alerts"
-                        st.rerun()
-                elif camera_photo is not None and not cam_permission_granted:
-                    st.warning("⚠️ Please check the permission checkbox above to authorize camera processing.")
-
-                if gesture_number and gesture_number != "-- Select Gesture / Page --":
-                    target_page_str = gesture_number.split(": ")[1]
-                    st.success(f"✅ Gesture decoded: **{gesture_number}**")
-                    if st.button("🚀 Confirm & Navigate"):
+                if gesture_selection and gesture_selection != "-- Select Finger Count --" and cam_permission_granted:
+                    target_page_str = gesture_selection.split(": ")[1]
+                    st.success(f"✅ Gesture decoded successfully: **{gesture_selection}**")
+                    if st.button("🚀 Confirm Gesture & Navigate"):
                         st.session_state['current_page'] = target_page_str
                         st.rerun()
+                elif gesture_selection and gesture_selection != "-- Select Finger Count --" and not cam_permission_granted:
+                    st.warning("⚠️ Please check the camera permission authorization box above first.")
 
             # Display Media Permission Audit Logs for transparency
             st.markdown("---")
