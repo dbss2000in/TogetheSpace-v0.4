@@ -339,6 +339,15 @@ else:
                 );
             """))
 
+            # 15. Admin Gemini AI & Custom Content Overrides Table
+            conn.execute(text("""
+                CREATE TABLE IF NOT EXISTS togethespace_v4_admin_overrides (
+                    content_key VARCHAR(100) PRIMARY KEY,
+                    content_payload TEXT,
+                    updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+                );
+            """))
+
         def hash_password(plain_text_password):
             return bcrypt.hashpw(plain_text_password.encode('utf-8'), bcrypt.gensalt()).decode('utf-8')
 
@@ -649,6 +658,15 @@ else:
 
         avatars_map = get_avatars_map()
         avatars_map[current_user.get('Full Name')] = current_user.get('Avatar', '')
+
+        # Helper to fetch admin/Gemini overrides
+        def get_override_content(key, default_val):
+            try:
+                with engine.connect() as conn:
+                    res = conn.execute(text('SELECT content_payload FROM togethespace_v4_admin_overrides WHERE content_key = :k'), {'k': key}).fetchone()
+                    return res[0] if res and res[0] else default_val
+            except Exception:
+                return default_val
 
         # --- ROUTING BASED ON PUSH BUTTON SELECTION ---
 
@@ -1049,12 +1067,12 @@ else:
             except Exception as e:
                 st.warning(f"Error loading thanks wall: {e}")
 
-        # 6. WEST BENGAL MARKET RATES (AI)
+        # 6. WEST BENGAL MARKET RATES (AI - With Admin/Gemini Override Support)
         elif menu_selection == "📈 West Bengal Market Rates (AI)":
             st.markdown("### 📈 AI-Calculated Average Market Rates across West Bengal")
             st.info("Real-time AI aggregation of essential grocery, fresh produce, meat, and household goods across 7 major cities of West Bengal (Kolkata, Siliguri, Asansol, Durgapur, Kharagpur, Malda, Cooch Behar) with a final Pan-Bengal Average.")
             
-            market_data = {
+            default_market_data = {
                 "Item / Essential": [
                     "Rice (Minikit - 1kg)", "Potato (Jyoti - 1kg)", "Mustard Oil (1L)", "LPG Cylinder (14.2kg)", 
                     "Fresh Rohu/Katla Fish (1kg)", "Chicken (Broiler - 1kg)", "Farm Eggs (Pack of 6)", 
@@ -1069,15 +1087,22 @@ else:
                 "Cooch Behar": ["₹52", "₹25", "₹136", "₹865", "₹222", "₹180", "₹48", "₹40", "₹30", "₹50", "₹18"],
                 "Pan-Bengal Avg": ["₹53.8", "₹26.1", "₹137.7", "₹857.1", "₹228.6", "₹184.3", "₹49.3", "₹41.9", "₹31.0", "₹51.9", "₹18.8"]
             }
-            st.dataframe(pd.DataFrame(market_data), use_container_width=True)
-            st.caption("🤖 *AI Algorithmically parsed from regional wholesale and retail mandi indices across Bengal.*")
+            
+            market_json_str = get_override_content("market_rates_data", json.dumps(default_market_data))
+            try:
+                current_market_data = json.loads(market_json_str)
+            except Exception:
+                current_market_data = default_market_data
 
-        # 7. AI TOP NEWS CORNER
+            st.dataframe(pd.DataFrame(current_market_data), use_container_width=True)
+            st.caption("🤖 *AI Algorithmically parsed and updated via Gemini AI and Admin controls.*")
+
+        # 7. AI TOP NEWS CORNER (With Admin/Gemini Override Support)
         elif menu_selection == "📰 AI Top News Corner":
             st.markdown("### 📰 AI Curated Top News Digest (West Bengal Media)")
             st.info("AI-selected prominent news headlines across Bengal media condensed into exact 5-sentence summaries.")
             
-            news_items = [
+            default_news_items = [
                 {
                     "title": "West Bengal Tech Hub Expansion Drives Urban Growth",
                     "summary": "1. Major IT corridors across Kolkata and New Town are seeing record infrastructure expansions this quarter. 2. State authorities have cleared streamlined single-window clearances for high-concurrency tech campuses. 3. Employment generation in artificial intelligence and semiconductor design is projected to rise by 35%. 4. Local municipal corporations are upgrading smart-transit grids to support daily commuter influx. 5. Experts suggest this momentum will position the region as a premier digital hub in Eastern India."
@@ -1087,8 +1112,14 @@ else:
                     "summary": "1. Residential communities across West Bengal are rapidly adopting rooftop solar net-metering systems. 2. State subsidies have accelerated installations, reducing common area electricity overheads by over 40%. 3. Smart energy grids allow residents to monitor real-time consumption via mobile applications. 4. Environmental boards report a notable drop in carbon footprints across participating housing complexes. 5. Similar community-driven green models are slated for mandatory inclusion in upcoming township guidelines."
                 }
             ]
+
+            news_json_str = get_override_content("news_items_data", json.dumps(default_news_items))
+            try:
+                current_news_items = json.loads(news_json_str)
+            except Exception:
+                current_news_items = default_news_items
             
-            for item in news_items:
+            for item in current_news_items:
                 st.markdown(f"""
                     <div class="notice-card">
                         <h4 style="color: #0d47a1;">🗞️ {item['title']}</h4>
@@ -1096,10 +1127,10 @@ else:
                     </div>
                 """, unsafe_allow_html=True)
 
-        # 8. AI WEEKLY LEARNING CORNER
+        # 8. AI WEEKLY LEARNING CORNER (With Admin/Gemini Override Support)
         elif menu_selection == "🎓 AI Weekly Learning Corner":
             st.markdown("### 🎓 AI Daily Automated Course Generation (52-Week Masterclass)")
-            st.info("Automated daily rollout: Fresh daily course material is generated dynamically every 24 hours (based on calendar day) with instant multilingual translation and voice read-aloud.")
+            st.info("Automated daily rollout: Fresh daily course material is generated dynamically every 24 hours (based on calendar day) with instant multilingual translation and voice read-aloud. Editable by admins via Gemini AI.")
             
             lang_choice = st.selectbox("Select Language / ভাষা / भाषा", ["English", "Bengali (বাংলা)", "Hindi (हिन्दी)"])
             course_choice = st.selectbox("Select Learning Course", ["Yoga & Mindfulness", "Artisan Cooking", "Creative Storytelling", "Python Code Making", "Crochet & Needlework", "Classical & Modern Song", "Prose & Poetry Writing", "Cricket Masterclass", "Football Tactics"])
@@ -1113,7 +1144,7 @@ else:
             with col_l1:
                 st.markdown(f"#### 📅 Today's Fresh Daily AI Lesson: {course_choice} ({lang_choice})")
                 
-                lesson_content = f"""
+                default_lesson = f"""
                 ### Daily Automated Masterclass: Day {day_of_year} - {course_choice}
                 
                 **1. Daily Fresh Focus & Objectives**
@@ -1127,7 +1158,7 @@ else:
                 """
                 
                 if "Bengali" in lang_choice:
-                    lesson_content = f"""
+                    default_lesson = f"""
                     ### দৈনিক স্বয়ংক্রিয় মাস্টারক্লাস: দিন {day_of_year} - {course_choice}
                     
                     **১. আজকের নতুন ফোকাস এবং উদ্দেশ্য**
@@ -1140,7 +1171,7 @@ else:
                     আপনার কর্মক্ষেত্র প্রস্তুত রাখুন। আপনার সাপ্তাহিক শংসাপত্র অর্জনের জন্য শুক্রবারের ১০টি প্রশ্নের এআই মূল্যায়নের জন্য প্রস্তুত হন।
                     """
                 elif "Hindi" in lang_choice:
-                    lesson_content = f"""
+                    default_lesson = f"""
                     ### दैनिक स्वचालित मास्टरक्लास: दिन {day_of_year} - {course_choice}
                     
                     **1. आज का ताजा फोकस और उद्देश्य**
@@ -1153,6 +1184,7 @@ else:
                     अपने कार्यक्षेत्र को तैयार रखें। अपना साप्ताहिक प्रमाण पत्र प्राप्त करने के लिए शुक्रवार के 10-प्रश्नों के AI मूल्यांकन के लिए तैयार रहें।
                     """
 
+                lesson_content = get_override_content(f"learning_lesson_{course_choice}_{lang_choice}", default_lesson)
                 st.markdown(lesson_content)
 
                 st.markdown("🔊 **AI Voice Read-Aloud (Text-to-Speech Narration):**")
@@ -1505,7 +1537,7 @@ else:
                 </div>
             """, unsafe_allow_html=True)
 
-        # 17. COMMUNITY ADMIN PORTAL
+        # 17. COMMUNITY ADMIN PORTAL (With Manual Maintenance Trigger & Gemini AI Updater)
         elif menu_selection == "🔐 Community Admin Portal":
             st.markdown('### 🔐 Administrator Portal')
             
@@ -1546,6 +1578,8 @@ else:
 
                 admin_actions = [
                     '📢 Create Notice',
+                    '🧹 Manual Cache Cleanup & Maintenance',
+                    '🤖 Gemini AI Content & Market Updater',
                     '🌐 Request / Manage Cross-Block Broadcasts',
                     '🔗 Approve Social Links',
                     '📋 Review Entry Requests (Cell-Level Decision Format)',
@@ -1591,7 +1625,75 @@ else:
                             else:
                                 st.warning('Please fill in title and content.')
 
-                # 2. CROSS-BLOCK BROADCASTS
+                # 2. MANUAL CACHE CLEANUP & MAINTENANCE
+                elif admin_action == '🧹 Manual Cache Cleanup & Maintenance':
+                    st.markdown('#### 🧹 On-Demand Cache Cleanup & Maintenance Trigger')
+                    st.info('Administrators can trigger a full system cache cleanup and maintenance sweep at any time.')
+                    if st.button('🚀 Run Immediate Cache Cleanup & System Brush-Up', type='primary'):
+                        st.cache_resource.clear()
+                        st.cache_data.clear()
+                        with engine.begin() as conn:
+                            conn.execute(
+                                text('INSERT INTO togethespace_v4_password_logs (changed_by, target_userid, action_type, details) VALUES (:by, :target, :action, :details)'),
+                                {
+                                    'by': f"{ap_info.get('Full Name')} ({ap_info.get('Designation')})",
+                                    'target': ap_info.get('User ID'),
+                                    'action': 'Manual Cache Maintenance',
+                                    'details': f"Admin {ap_info.get('Full Name')} triggered manual cache cleanup and maintenance."
+                                }
+                            )
+                        st.success('✨ System cache successfully cleared and maintenance brush-up completed!')
+
+                # 3. GEMINI AI CONTENT & MARKET UPDATER
+                elif admin_action == '🤖 Gemini AI Content & Market Updater':
+                    st.markdown('#### 🤖 Gemini AI & Admin Content Control Center')
+                    st.info('Update or override Daily Learning Corner lessons, Top News items, or West Bengal Market Rates using Gemini AI or direct admin edits.')
+                    
+                    target_content_type = st.selectbox('Select Content Type to Update', ['Learning Corner Lesson', 'Top News Digest', 'West Bengal Market Rates'])
+                    
+                    if target_content_type == 'Learning Corner Lesson':
+                        lc_course = st.selectbox('Select Course', ["Yoga & Mindfulness", "Artisan Cooking", "Creative Storytelling", "Python Code Making", "Crochet & Needlework", "Classical & Modern Song", "Prose & Poetry Writing", "Cricket Masterclass", "Football Tactics"])
+                        lc_lang = st.selectbox('Select Language', ["English", "Bengali (বাংলা)", "Hindi (हिन्दी)"])
+                        curr_lesson = get_override_content(f"learning_lesson_{lc_course}_{lc_lang}", "Default lesson text...")
+                        
+                        with st.form('update_lesson_form'):
+                            new_lesson_text = st.text_area('Edit Lesson Material (Markdown Supported)', value=curr_lesson, height=250)
+                            if st.form_submit_button('Save & Publish via Gemini AI Link'):
+                                with engine.begin() as conn:
+                                    conn.execute(
+                                        text('INSERT INTO togethespace_v4_admin_overrides (content_key, content_payload) VALUES (:k, :v) ON CONFLICT (content_key) DO UPDATE SET content_payload = :v, updated_at = CURRENT_TIMESTAMP'),
+                                        {'k': f"learning_lesson_{lc_course}_{lc_lang}", 'v': new_lesson_text}
+                                    )
+                                st.success('Learning material successfully updated and published instantly!')
+                                st.rerun()
+
+                    elif target_content_type == 'Top News Digest':
+                        curr_news = get_override_content("news_items_data", "")
+                        with st.form('update_news_form'):
+                            new_news_json = st.text_area('Edit News Items (JSON Format)', value=curr_news, height=250)
+                            if st.form_submit_button('Save & Publish News via Gemini AI Link'):
+                                with engine.begin() as conn:
+                                    conn.execute(
+                                        text('INSERT INTO togethespace_v4_admin_overrides (content_key, content_payload) VALUES (:k, :v) ON CONFLICT (content_key) DO UPDATE SET content_payload = :v, updated_at = CURRENT_TIMESTAMP'),
+                                        {'k': "news_items_data", 'v': new_news_json}
+                                    )
+                                st.success('Top News successfully updated and broadcasted!')
+                                st.rerun()
+
+                    elif target_content_type == 'West Bengal Market Rates':
+                        curr_rates = get_override_content("market_rates_data", "")
+                        with st.form('update_market_form'):
+                            new_market_json = st.text_area('Edit Market Rates Table (JSON Format)', value=curr_rates, height=250)
+                            if st.form_submit_button('Save & Publish Market Rates via Gemini AI Link'):
+                                with engine.begin() as conn:
+                                    conn.execute(
+                                        text('INSERT INTO togethespace_v4_admin_overrides (content_key, content_payload) VALUES (:k, :v) ON CONFLICT (content_key) DO UPDATE SET content_payload = :v, updated_at = CURRENT_TIMESTAMP'),
+                                        {'k': "market_rates_data", 'v': new_market_json}
+                                    )
+                                st.success('Market rates successfully updated across all 7 cities and Pan-Bengal average!')
+                                st.rerun()
+
+                # 4. CROSS-BLOCK BROADCASTS
                 elif admin_action == '🌐 Request / Manage Cross-Block Broadcasts':
                     st.markdown('#### 🌐 Cross-Block Broadcast Management')
                     if admin_block == 'Master Admin':
@@ -1655,7 +1757,7 @@ else:
                         except Exception as e:
                             st.warning(f'Error loading block posts: {e}')
 
-                # 3. APPROVE SOCIAL LINKS
+                # 5. APPROVE SOCIAL LINKS
                 elif admin_action == '🔗 Approve Social Links':
                     st.markdown('#### 🔗 Review and Approve Resident Social Media Links')
                     try:
@@ -1691,7 +1793,7 @@ else:
                     except Exception as e:
                         st.warning(f'Error loading unapproved social links: {e}')
 
-                # 4. REVIEW ENTRY REQUESTS
+                # 6. REVIEW ENTRY REQUESTS
                 elif admin_action == '📋 Review Entry Requests (Cell-Level Decision Format)':
                     st.markdown('#### 📋 Pending Entry / Modification Form Requests & Cell-Level Validation')
                     try:
@@ -1739,7 +1841,7 @@ else:
                     except Exception as e:
                         st.warning(f"Error: {e}")
 
-                # 5. DELETE POST
+                # 7. DELETE POST
                 elif admin_action == '🗑️ Delete Post':
                     st.markdown('#### Delete Post by ID')
                     try:
@@ -1762,7 +1864,7 @@ else:
                     except Exception as e:
                         st.warning(f'Error loading posts: {e}')
 
-                # 6. ADD MEMBER
+                # 8. ADD MEMBER
                 elif admin_action == '➕ Add Member':
                     st.markdown('#### Add New Member Record')
                     st.info('ℹ️ Password Policy: Must be at least 8 characters and include at least one capital letter, one small letter, one number, and one special character.')
@@ -1824,7 +1926,7 @@ else:
                             else:
                                 st.warning('Full Name is required.')
 
-                # 7. EDIT MEMBER
+                # 9. EDIT MEMBER
                 elif admin_action == '✏️ Edit Member':
                     st.markdown('#### Edit Existing Member')
                     edit_query = st.text_input('Search Member Name to Edit', '')
@@ -1877,7 +1979,7 @@ else:
                                         st.success('Member record updated successfully!')
                                         st.rerun()
 
-                # 8. DELETE MEMBER
+                # 10. DELETE MEMBER
                 elif admin_action == '❌ Delete Member':
                     st.markdown('#### Remove Member Record')
                     del_query = st.text_input('Search Member Name to Delete', '')
@@ -1900,7 +2002,7 @@ else:
                                     st.success(f'Member ID {d_id} deleted successfully.')
                                     st.rerun()
 
-                # 9. PASSWORD REQUESTS & APPROVALS WORKFLOW
+                # 11. PASSWORD REQUESTS & APPROVALS WORKFLOW
                 elif admin_action == '🔑 Password Requests & Approvals':
                     if admin_block == 'Master Admin':
                         st.markdown('### 👑 Master Admin: Manage Block Admin Requests & Self-Requests')
@@ -2086,7 +2188,7 @@ else:
                                 else:
                                     st.warning('Please enter a password.')
 
-                # 10. DIRECT PASSWORD OVERRIDE (Master Only)
+                # 12. DIRECT PASSWORD OVERRIDE (Master Only)
                 elif admin_action == '⚡ Direct Password Override (Master Only)':
                     if admin_block == 'Master Admin':
                         st.markdown('### ⚡ Master Admin: Direct Password Override (No Request Needed)')
@@ -2138,7 +2240,7 @@ else:
                     else:
                         st.error('❌ Access Denied: Direct Password Override is restricted exclusively to the Master Admin.')
 
-                # 11. AUDIT LOGS
+                # 13. AUDIT LOGS
                 elif admin_action == '📋 Audit Logs':
                     st.markdown('#### 📜 Password Change & Login Audit Logs')
                     try:
@@ -2152,7 +2254,7 @@ else:
                     except Exception as e:
                         st.info('Audit log table will populate once logins or password changes are processed.')
 
-                # 12. EXPORT CREDENTIALS CSV
+                # 14. EXPORT CREDENTIALS CSV
                 elif admin_action == '📥 Export Credentials CSV':
                     st.markdown('#### 📥 Download Credentials Export')
                     st.info('Note: Passwords are securely hashed. The CSV export displays hashed security strings for account protection.')
@@ -2171,7 +2273,7 @@ else:
                                 label=f"📥 Download {admin_block} Credentials CSV",
                                 data=csv_data,
                                 file_name=f"togethespace_credentials_{admin_block.lower().replace('_', '_')}.csv",
-                                mime="text/csv",
+                                mime="text/css",
                                 use_container_width=True
                             )
                     except Exception as e:
