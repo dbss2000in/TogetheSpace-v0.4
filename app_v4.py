@@ -608,6 +608,38 @@ else:
         is_master = st.session_state.get('is_admin_session') and st.session_state.get('admin_preselected_role') == 'Master Admin'
         is_admin_user = st.session_state.get('is_admin_session', False)
 
+        # Helper for Avatar HTML rendering
+        def get_avatar_html(name, avatar_url, size=40):
+            if avatar_url and str(avatar_url).strip().startswith('http'):
+                return f"<img src='{avatar_url}' style='width: {size}px; height: {size}px; border-radius: 50%; object-fit: cover; margin-right: 10px; border: 1px solid #cbd5e1;'>"
+            else:
+                initial = str(name or 'U')[0].upper()
+                return f"<div style='background-color: #0d47a1; color: white; width: {size}px; height: {size}px; border-radius: 50%; display: inline-flex; align-items: center; justify-content: center; font-weight: bold; margin-right: 10px; font-size: {size//2}px;'>{initial}</div>"
+
+        @st.cache_data(ttl=60)
+        def get_avatars_map():
+            try:
+                with engine.connect() as conn:
+                    df = pd.read_sql(text('SELECT "Full Name", "Avatar" FROM togethespace_v4_directory WHERE "Full Name" IS NOT NULL;'), con=conn)
+                res_map = dict(zip(df['Full Name'], df['Avatar']))
+                for ap in ADMIN_PROFILES.values():
+                    res_map[ap['Full Name']] = ap['Avatar']
+                return res_map
+            except Exception:
+                return {}
+
+        avatars_map = get_avatars_map()
+        avatars_map[current_user.get('Full Name')] = current_user.get('Avatar', '')
+
+        # Helper to fetch admin/Gemini overrides (DEFINED BEFORE USE)
+        def get_override_content(key, default_val):
+            try:
+                with engine.connect() as conn:
+                    res = conn.execute(text('SELECT content_payload FROM togethespace_v4_admin_overrides WHERE content_key = :k'), {'k': key}).fetchone()
+                    return res[0] if res and res[0] else default_val
+            except Exception:
+                return default_val
+
         # --- HERITAGE WELCOME BANNER DISPLAYED ON LANDING ---
         st.markdown("""
             <div class="heritage-banner">
@@ -696,38 +728,6 @@ else:
                 st.rerun()
 
         menu_selection = st.session_state['current_page']
-
-        # Helper for Avatar HTML rendering
-        def get_avatar_html(name, avatar_url, size=40):
-            if avatar_url and str(avatar_url).strip().startswith('http'):
-                return f"<img src='{avatar_url}' style='width: {size}px; height: {size}px; border-radius: 50%; object-fit: cover; margin-right: 10px; border: 1px solid #cbd5e1;'>"
-            else:
-                initial = str(name or 'U')[0].upper()
-                return f"<div style='background-color: #0d47a1; color: white; width: {size}px; height: {size}px; border-radius: 50%; display: inline-flex; align-items: center; justify-content: center; font-weight: bold; margin-right: 10px; font-size: {size//2}px;'>{initial}</div>"
-
-        @st.cache_data(ttl=60)
-        def get_avatars_map():
-            try:
-                with engine.connect() as conn:
-                    df = pd.read_sql(text('SELECT "Full Name", "Avatar" FROM togethespace_v4_directory WHERE "Full Name" IS NOT NULL;'), con=conn)
-                res_map = dict(zip(df['Full Name'], df['Avatar']))
-                for ap in ADMIN_PROFILES.values():
-                    res_map[ap['Full Name']] = ap['Avatar']
-                return res_map
-            except Exception:
-                return {}
-
-        avatars_map = get_avatars_map()
-        avatars_map[current_user.get('Full Name')] = current_user.get('Avatar', '')
-
-        # Helper to fetch admin/Gemini overrides
-        def get_override_content(key, default_val):
-            try:
-                with engine.connect() as conn:
-                    res = conn.execute(text('SELECT content_payload FROM togethespace_v4_admin_overrides WHERE content_key = :k'), {'k': key}).fetchone()
-                    return res[0] if res and res[0] else default_val
-            except Exception:
-                return default_val
 
         # --- ROUTING BASED ON PUSH BUTTON SELECTION ---
 
