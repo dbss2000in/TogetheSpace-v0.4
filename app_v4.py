@@ -509,9 +509,9 @@ else:
             st.markdown("""
                 <div class="login-container">
                     <div class="heritage-banner" style="margin-bottom: 15px; padding: 10px;">
-                        <p class="artisan-title" style="font-size: 1.3em; margin: 0;">শ্রীশ্রীরামকৃষ্ণপরমহংসদেব ও শ্রীশ্রীমা সারদাদেবীর পদপ্রান্তে বিনম্র শ্রদ্ধार्ঘ্য :</p>
-                        <p style="font-size: 0.85em; color: #2e5a27; margin: 0;">অঙ্গন — একসাথে - The TogetheSpace</p>
-                        <p style="font-size: 0.75em; color: #5c0000; margin-top: 4px;">✦ শ্রী রামকৃষ্ণ ও মা সারদার আদর্শে সতত ধাবমান ✦</p>
+                        <p class="artisan-title" style="font-size: 1.3em; margin: 0;">A Humble Tribute at the Lotus Feet of Sri Ramakrishna Paramahamsa and Sri Sarada Devi :</p>
+                        <p style="font-size: 0.85em; color: #2e5a27; margin: 0;">Angan — Together - The TogetheSpace</p>
+                        <p style="font-size: 0.75em; color: #5c0000; margin-top: 4px;">✦ Striving Constantly in the Ideals of Sri Ramakrishna and Mother Sarada ✦</p>
                     </div>
                     <h2 style="color: #0d47a1; text-align: center; margin-bottom: 10px;">🔒 Secure Access Portal</h2>
                     <p style="text-align: center; color: #1a1a1a; font-size: 0.95em;">
@@ -669,23 +669,23 @@ else:
             except Exception:
                 return default_val
 
-        # Helper for Bengal Alpona & Graffiti Motif Cards in Blank Spaces
+        # Helper for English Heritage & Graffiti Motif Cards in Blank Spaces
         def render_alpona_motif():
             st.markdown("""
                 <div class="heritage-alpona-card">
-                    🪷 আল্পনা ও লোকশিল্প: ১৯ শতকের বাংলার আবহমান ঐতিহ্য ও সংস্কৃতির স্পর্শ 🪷
+                    🪷 Heritage & Folk Art: 19th Century Bengal Tradition & Cultural Touch 🪷
                 </div>
             """, unsafe_allow_html=True)
 
-        # --- HERITAGE WELCOME BANNER DISPLAYED ON LANDING ---
+        # --- ENGLISH WELCOME BANNER DISPLAYED ON LANDING ---
         st.markdown("""
             <div class="heritage-banner">
-                <p class="artisan-title" style="margin: 0; font-size: 2.1em;">শ্রীশ্রীরামকৃষ্ণপরমহংসদেব ও শ্রীশ্রীমা সারদাদেবীর পদপ্রান্তে বিনম্র শ্রদ্ধार्ঘ্য :</p>
+                <p class="artisan-title" style="margin: 0; font-size: 2.1em;">A Humble Tribute at the Lotus Feet of Sri Ramakrishna Paramahamsa and Sri Sarada Devi :</p>
                 <p style="font-size: 1.15em; color: #2e5a27; margin-top: 6px; font-weight: 700;">
-                    অঙ্গন — একসাথে - The TogetheSpace
+                    Angan — Together - The TogetheSpace
                 </p>
                 <div style="margin-top: 10px; display: flex; justify-content: center; gap: 15px; font-size: 0.9em; font-style: italic; color: #5c0000;">
-                    <span>✦ শ্রী রামকৃষ্ণ ও মা সারদার আদর্শে সতত ধাবমান ✦</span>
+                    <span>✦ Striving Constantly in the Ideals of Sri Ramakrishna and Mother Sarada ✦</span>
                 </div>
             </div>
         """, unsafe_allow_html=True)
@@ -822,10 +822,14 @@ else:
             st.dataframe(pd.DataFrame(facility_index_data), use_container_width=True)
             render_alpona_motif()
 
-        # 0.1 SIGN LANGUAGE & VOICE HUB (Real Gemini AI Multimodal Vision & Audio Analysis with 1-10 Dynamic Interpreter)
+        # 0.1 SIGN LANGUAGE & VOICE HUB (PAGE UNDER CONSTRUCTION WATERMARK & ENGLISH BANNER)
         elif menu_selection == "🎙️ Sign Language & Voice Hub":
-            st.markdown("### 🎙️ Sign Language & Voice Hub (Real Gemini AI Multimodal Interpreter)")
-            st.info("Accessibility Hub: Capture your 5-second audio recording or camera snapshot. Real Gemini AI analyzes the uploaded media, reads the exact number or keyword (1-10) directly from your audio/photograph, and instantly navigates the app to the correct section.")
+            st.markdown("""
+                <div style="background-color: #fff3e0; border: 5px dashed #e65100; border-radius: 16px; padding: 40px; text-align: center; margin: 20px 0; box-shadow: 0 6px 20px rgba(230,81,0,0.25);">
+                    <h1 style="color: #e65100 !important; font-size: 3.8em; margin: 0; font-family: 'Playfair Display', serif; text-transform: uppercase; letter-spacing: 2px;">PAGE UNDER CONSTRUCTION</h1>
+                    <p style="color: #5c0000 !important; font-size: 1.3em; margin-top: 15px; font-weight: 700;">Version 0.4 concluded. Version 0.5 will feature advanced native voice/video connectivity tailored for blind and deaf individuals.</p>
+                </div>
+            """, unsafe_allow_html=True)
 
             page_mapping_dict = {
                 "1": "📋 Resident Directory",
@@ -840,126 +844,41 @@ else:
                 "10": "📊 Community Polls & Voting"
             }
 
+            st.markdown("---")
+            st.markdown("### 🎙️ Sign Language (Finger Gesture) & Voice Command Hub (Preview)")
+            st.info("Accessibility Hub: Version 0.4 audio/gesture testing panel.")
+
             col_r1, col_r2 = st.columns(2)
             with col_r1:
                 st.markdown("#### 🗣️ 1. Native Audio Voice Recording")
                 audio_perm = st.checkbox("🔒 Enable Microphone Permission", value=False, key="audio_perm_box")
-                if audio_perm:
-                    with engine.begin() as conn:
-                        conn.execute(
-                            text('INSERT INTO togethespace_v4_media_logs (user_id, user_name, media_type, permission_status) VALUES (:uid, :uname, \'Audio Recorder\', \'Granted\')'),
-                            {'uid': current_user.get('User ID', 'RES_01'), 'uname': current_user.get('Full Name', 'Resident')}
-                        )
-                
                 audio_recording = st.audio_input("Record Spoken Number (1-10) or Keyword")
 
             with col_r2:
                 st.markdown("#### 📷 2. Native Camera Snapshot Recording")
                 cam_perm = st.checkbox("🔒 Enable Camera Permission", value=False, key="cam_perm_box")
-                if cam_perm:
-                    with engine.begin() as conn:
-                        conn.execute(
-                            text('INSERT INTO togethespace_v4_media_logs (user_id, user_name, media_type, permission_status) VALUES (:uid, :uname, \'Camera Snapshot\', \'Granted\')'),
-                            {'uid': current_user.get('User ID', 'RES_01'), 'uname': current_user.get('Full Name', 'Resident')}
-                        )
-
                 camera_snapshot = st.camera_input("Capture Finger Gesture Snapshot")
 
-            # REAL GEMINI AI MULTIMODAL PROCESSING & INTERPRETATION
-            detected_target_page = None
-            interpretation_source = None
+            interpretation_choice = st.selectbox("Select Interpreted Number / Section (1-10):", options=[
+                "-- Select Interpreted Number --",
+                "1 - 📋 Resident Directory",
+                "2 - 🛒 Classifieds & Marketplace (Auction)",
+                "3 - 🎓 AI Weekly Learning Corner",
+                "4 - 🚨 Safety & SOS Alerts",
+                "5 - 🔐 Community Admin Portal",
+                "6 - 🧭 Facility & Service Index",
+                "7 - 👔 Job Match & Employment Directory",
+                "8 - 🏡 Communication & Feed",
+                "9 - 🎥 Media Corner",
+                "10 - 📊 Community Polls & Voting"
+            ])
 
-            if audio_recording is not None and audio_perm:
-                st.success("🎙️ Audio recording captured successfully!")
-                st.audio(audio_recording)
-                if GEMINI_AVAILABLE and GEMINI_API_KEY:
-                    with st.spinner("🤖 Gemini AI is reading and analyzing your recorded audio..."):
-                        try:
-                            audio_bytes = audio_recording.getvalue()
-                            model = genai.GenerativeModel('gemini-1.5-flash')
-                            response = model.generate_content([
-                                {"mime_type": "audio/wav", "data": audio_bytes},
-                                "Listen carefully to this audio recording. What number (1 to 10) or section keyword (directory, marketplace, learning, sos, admin) was spoken? Return ONLY the exact integer number (1-10) or keyword."
-                            ])
-                            parsed_text = response.text.strip().lower()
-                            for num_key, p_name in page_mapping_dict.items():
-                                if num_key in parsed_text or num_key.lower() in parsed_text.lower():
-                                    detected_target_page = p_name
-                                    interpretation_source = f"Real Gemini AI Audio Analysis (Heard: '{parsed_text}')"
-                                    break
-                        except Exception as e:
-                            st.warning(f"Gemini API audio processing note: {e}")
-                
-                if not detected_target_page:
-                    # Dynamic Fallback based on audio byte size / hash modulo
-                    audio_bytes = audio_recording.getvalue()
-                    fallback_idx = str((len(audio_bytes) % 10) + 1)
-                    detected_target_page = page_mapping_dict.get(fallback_idx, "📋 Resident Directory")
-                    interpretation_source = f"Dynamic Audio Interpreter (Interpreted Number: {fallback_idx})"
-
-            if camera_snapshot is not None and cam_perm:
-                st.success("📸 Gesture snapshot captured successfully!")
-                snap_img = Image.open(camera_snapshot)
-                st.image(snap_img, width=200, caption="Captured Gesture Frame")
-                
-                if GEMINI_AVAILABLE and GEMINI_API_KEY:
-                    with st.spinner("🤖 Gemini AI Vision is counting the fingers in your photograph..."):
-                        try:
-                            model = genai.GenerativeModel('gemini-1.5-flash')
-                            response = model.generate_content([
-                                snap_img,
-                                "Look at this photograph of a hand showing fingers. Count the exact number of raised fingers clearly shown from 1 to 10. Return ONLY the single integer digit."
-                            ])
-                            parsed_digit = response.text.strip()
-                            digits_found = re.findall(r'\d+', parsed_digit)
-                            if digits_found:
-                                d_str = digits_found[0]
-                                if d_str in page_mapping_dict:
-                                    detected_target_page = page_mapping_dict[d_str]
-                                    interpretation_source = f"Real Gemini AI Vision Analysis ({d_str} fingers counted in photo)"
-                        except Exception as e:
-                            st.warning(f"Gemini API vision processing note: {e}")
-
-                if not detected_target_page:
-                    # Dynamic Vision Fallback using NumPy Image Contour/Peak analysis
-                    try:
-                        img_np = np.array(snap_img.convert('L'))
-                        h, w = img_np.shape
-                        upper_region = img_np[:int(h * 0.4), int(w * 0.2):int(w * 0.8)]
-                        col_intensity = np.mean(upper_region, axis=0)
-                        peaks = sum(1 for i in range(1, len(col_intensity)-1) if col_intensity[i] > col_intensity[i-1] and col_intensity[i] >= col_intensity[i+1])
-                        detected_count = min(max(peaks % 10 + 1, 1), 10)
-                        detected_target_page = page_mapping_dict.get(str(detected_count), "🚨 Safety & SOS Alerts")
-                        interpretation_source = f"Dynamic Vision Contour Interpreter ({detected_count} fingers detected)"
-                    except Exception:
-                        detected_target_page = "🚨 Safety & SOS Alerts"
-                        interpretation_source = "Vision Fallback (Page 4)"
-
-            if detected_target_page:
-                st.markdown(f"""
-                    <div style="background: #eaf4ed; border-left: 6px solid #1b5e20; padding: 15px; border-radius: 8px; margin: 15px 0;">
-                        <h4 style="color: #1b5e20; margin: 0;">🤖 Gemini AI Interpretation Complete!</h4>
-                        <p style="margin: 5px 0 0 0; font-size: 1.05em;"><b>Source:</b> {interpretation_source}</p>
-                        <p style="margin: 5px 0 0 0; font-size: 1.1em; color: #051c07;"><b>Target Navigation:</b> {detected_target_page}</p>
-                    </div>
-                """, unsafe_allow_html=True)
-
-                if st.button("🚀 Navigate Automatically Now", type="primary", use_container_width=True):
-                    st.session_state['current_page'] = detected_target_page
+            if interpretation_choice and interpretation_choice != "-- Select Interpreted Number --":
+                target_section = interpretation_choice.split(" - ")[1]
+                st.success(f"✅ Interpreted selection: **{target_section}**")
+                if st.button("🚀 Navigate to Section"):
+                    st.session_state['current_page'] = target_section
                     st.rerun()
-
-            # Display Media Permission Audit Logs for transparency
-            st.markdown("---")
-            st.markdown("#### 📋 Media Access Permission & Gemini AI Audit Logs")
-            try:
-                with engine.connect() as conn:
-                    logs_df = pd.read_sql(text('SELECT * FROM togethespace_v4_media_logs ORDER BY timestamp DESC LIMIT 10;'), con=conn)
-                if logs_df.empty:
-                    st.info("No logs recorded yet.")
-                else:
-                    st.dataframe(logs_df, use_container_width=True)
-            except Exception as e:
-                st.info("Audit log table initializing...")
 
             render_alpona_motif()
 
@@ -2593,7 +2512,7 @@ else:
                     else:
                         st.error('❌ Access Denied: Direct Password Override is restricted exclusively to the Master Admin.')
 
-                # 14. AUDIT LOGS
+                # 14. Audit Logs
                 elif admin_action == '📋 Audit Logs':
                     st.markdown('#### 📜 Password Change & Login Audit Logs')
                     try:
@@ -2626,7 +2545,7 @@ else:
                                 label=f"📥 Download {admin_block} Credentials CSV",
                                 data=csv_data,
                                 file_name=f"togethespace_v4_credentials_{admin_block.lower()}.csv",
-                                mime="text/css",
+                                mime="text/csv",
                                 use_container_width=True
                             )
                     except Exception as e:
