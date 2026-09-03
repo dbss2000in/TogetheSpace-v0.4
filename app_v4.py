@@ -791,7 +791,7 @@ else:
             st.dataframe(pd.DataFrame(facility_index_data), use_container_width=True)
             render_alpona_motif()
 
-        # 0.1 SIGN LANGUAGE & VOICE HUB (Fully Functional Web Speech & MediaPipe Hands Integration)
+        # 0.1 SIGN LANGUAGE & VOICE HUB (Fully Functional Voice & Camera Gesture Integration)
         elif menu_selection == "🎙️ Sign Language & Voice Hub":
             st.markdown("### 🎙️ Sign Language (Finger Gesture) & Voice Command Hub")
             st.info("Accessibility hub for residents who cannot type. Use browser voice dictation or app-specific finger-count gestures to navigate effortlessly.")
@@ -822,10 +822,15 @@ else:
                     recognition.interimResults = false;
                     recognition.lang = 'en-US';
 
-                    btn.onclick = () => {
-                      recognition.start();
-                      statusEl.innerText = "🎤 Listening carefully... Speak now!";
-                      transcriptEl.innerText = "Listening...";
+                    btn.onclick = async () => {
+                      try {
+                        await navigator.mediaDevices.getUserMedia({ audio: true });
+                        recognition.start();
+                        statusEl.innerText = "🎤 Listening carefully... Speak now!";
+                        transcriptEl.innerText = "Listening...";
+                      } catch (err) {
+                        statusEl.innerText = "❌ Microphone permission denied.";
+                      }
                     };
 
                     recognition.onresult = (event) => {
@@ -933,22 +938,25 @@ else:
                     }
                   });
 
-                  camBtn.onclick = () => {
+                  camBtn.onclick = async () => {
                     if (!cameraStarted) {
-                      const camera = new Camera(videoElement, {
-                        onFrame: async () => {
-                          await hands.send({image: videoElement});
-                        },
-                        width: 260,
-                        height: 190
-                      });
-                      camera.start().then(() => {
-                        statusElement.innerText = "Camera active! Show fingers.";
-                        camBtn.style.display = 'none';
-                        cameraStarted = true;
-                      }).catch(err => {
-                        statusElement.innerText = "Camera access denied.";
-                      });
+                      try {
+                        await navigator.mediaDevices.getUserMedia({ video: true });
+                        const camera = new Camera(videoElement, {
+                          onFrame: async () => {
+                            await hands.send({image: videoElement});
+                          },
+                          width: 260,
+                          height: 190
+                        });
+                        camera.start().then(() => {
+                          statusElement.innerText = "Camera active! Show fingers.";
+                          camBtn.style.display = 'none';
+                          cameraStarted = true;
+                        });
+                      } catch(err) {
+                        statusElement.innerText = "Camera permission denied.";
+                      }
                     }
                   };
                 </script>
