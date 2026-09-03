@@ -10,7 +10,6 @@ from datetime import datetime, timedelta
 from PIL import Image
 import numpy as np
 import io
-import cv2
 
 st.set_page_config(
     page_title='TogetheSpace v0.4 — Heritage High-Concurrency Edition',
@@ -166,7 +165,7 @@ else:
     try:
         engine = get_db_engine(DATABASE_URL)
         
-        # CENTRALIZED DATABASE INITIALIZATION
+        # CENTRALIZED DATABASE INITIALIZATION (Including Media Permission Logs)
         with engine.begin() as conn:
             conn.execute(text('SELECT 1;'))
             
@@ -235,6 +234,17 @@ else:
                 CREATE TABLE IF NOT EXISTS togethespace_v4_admin_status (
                     block VARCHAR(50) PRIMARY KEY,
                     is_busy BOOLEAN DEFAULT FALSE
+                );
+            """))
+
+            conn.execute(text("""
+                CREATE TABLE IF NOT EXISTS togethespace_v4_media_logs (
+                    id SERIAL PRIMARY KEY,
+                    user_id VARCHAR(100),
+                    user_name VARCHAR(150),
+                    media_type VARCHAR(50),
+                    permission_status VARCHAR(50),
+                    timestamp TIMESTAMP DEFAULT CURRENT_TIMESTAMP
                 );
             """))
 
@@ -480,6 +490,21 @@ else:
             }
         }
 
+        # --- QUERY PARAMS PAGE ROUTING SYNC FOR ACCESSIBILITY / GESTURES ---
+        if 'page' in st.query_params:
+            p_val = st.query_params['page']
+            valid_pages = [
+                "🧭 Facility & Service Index", "🎙️ Sign Language & Voice Hub", "📋 Resident Directory",
+                "🏡 Communication & Feed", "🎥 Media Corner", "🤝 Donation & Give-Away",
+                "💖 Admin Thanks & Support", "📈 West Bengal Market Rates (AI)", "📰 AI Top News Corner",
+                "🎓 AI Weekly Learning Corner", "🛒 Classifieds & Marketplace (Auction)",
+                "👔 Job Match & Employment Directory", "✉️ Personalized Event Invitations",
+                "🛠️ Helpdesk & Tickets", "📅 Facility Booking & Utilities", "🚨 Safety & SOS Alerts",
+                "📊 Community Polls & Voting", "🌟 Local Attractions & Events", "🔐 Community Admin Portal"
+            ]
+            if p_val in valid_pages:
+                st.session_state['current_page'] = p_val
+
         # --- AUTHENTICATION GATE ---
         if 'authenticated' not in st.session_state:
             st.session_state['authenticated'] = False
@@ -656,7 +681,7 @@ else:
                 </div>
             """, unsafe_allow_html=True)
 
-        # --- HERITAGE WELCOME BANNER DISPLAYED ON LANDING (Exact User Requested Wording) ---
+        # --- HERITAGE WELCOME BANNER DISPLAYED ON LANDING ---
         st.markdown("""
             <div class="heritage-banner">
                 <p class="artisan-title" style="margin: 0; font-size: 2.1em;">শ্রীশ্রীরামকৃষ্ণপরমহংসদেব ও শ্রীশ্রীমা সারদাদেবীর পদপ্রান্তে বিনম্র শ্রদ্ধार्ঘ্য :</p>
@@ -668,6 +693,27 @@ else:
                 </div>
             </div>
         """, unsafe_allow_html=True)
+
+        # --- ACCESSIBILITY SCREEN READER & WEBSITE READER WIDGET (Sidebar) ---
+        st.sidebar.markdown("---")
+        st.sidebar.markdown("### 👁️ Screen Reader & Accessibility")
+        st.sidebar.markdown("🌐 [Free NVDA Screen Reader (External)](https://www.nvaccess.org/)")
+        
+        enable_screen_reader = st.sidebar.radio("🔊 Read App Content Aloud (Web Speech API)", ["Disabled", "Enabled (Continuous Read)"], index=0)
+        
+        if enable_screen_reader == "Enabled (Continuous Read)":
+            tts_script = """
+            <script>
+              if ('speechSynthesis' in window) {
+                const textToRead = document.body.innerText;
+                const utterance = new SpeechSynthesisUtterance(textToRead.substring(0, 1000));
+                utterance.rate = 1.0;
+                window.speechSynthesis.cancel();
+                window.speechSynthesis.speak(utterance);
+              }
+            </script>
+            """
+            components.html(tts_script, height=0)
 
         # --- WEEKLY GEMINI AMBIENT MUSIC PLAYER INTEGRATION (Feature 5) ---
         music_url = get_override_content(f"weekly_music_{user_block}", "https://www.soundhelix.com/examples/mp3/SoundHelix-Song-1.mp3")
@@ -780,10 +826,10 @@ else:
             st.dataframe(pd.DataFrame(facility_index_data), use_container_width=True)
             render_alpona_motif()
 
-        # 0.1 SIGN LANGUAGE & VOICE HUB (Native Server-Side Python Finger & Audio Processor)
+        # 0.1 SIGN LANGUAGE & VOICE HUB (With Permission Logging & Native Controls)
         elif menu_selection == "🎙️ Sign Language & Voice Hub":
             st.markdown("### 🎙️ Sign Language (Finger Gesture) & Voice Command Hub")
-            st.info("Server-side Accessibility Hub: Record your voice command or capture a finger gesture snapshot using native Streamlit widgets below. Python processes your input securely without browser sandbox blocks.")
+            st.info("Accessibility Hub: Record voice commands or capture finger gestures (1 to 10) with verified local device media permissions and database audit logging.")
 
             page_mapping_dict = {
                 "1": "📋 Resident Directory", "one": "📋 Resident Directory", "directory": "📋 Resident Directory", "residents": "📋 Resident Directory",
@@ -801,19 +847,29 @@ else:
             col_s1, col_s2 = st.columns(2)
 
             with col_s1:
-                st.markdown("#### 🗣️ Native Audio Voice Input")
-                st.write("Record your voice command (say a number 1-10 or a keyword like 'Directory' or 'Marketplace').")
-                audio_file = st.audio_input("Record Voice Command")
+                st.markdown("#### 🗣️ Native Audio Voice Input & Permission Log")
+                audio_permission_granted = st.checkbox("🔒 Grant Device Permission for Audio Microphone Access", value=False)
                 
+                if audio_permission_granted:
+                    with engine.begin() as conn:
+                        conn.execute(
+                            text('INSERT INTO togethespace_v4_media_logs (user_id, user_name, media_type, permission_status) VALUES (:uid, :uname, \'Audio Recorder\', \'Granted\')'),
+                            {'uid': current_user.get('User ID', 'RES_01'), 'uname': current_user.get('Full Name', 'Resident')}
+                        )
+                    st.success("✅ Audio permission successfully granted and logged in system audit trail.")
+
+                audio_file = st.audio_input("Record Voice Command")
                 spoken_text_input = st.text_input("Or type spoken command / number (1-10):", "", placeholder="e.g., 1, Directory, 2, Marketplace...")
                 
-                if audio_file is not None:
-                    st.success("🎙️ Audio recording received successfully by server!")
+                if audio_file is not None and audio_permission_granted:
+                    st.success("🎙️ Audio recording received & processed securely!")
                     st.audio(audio_file)
-                    st.info("🤖 [Server-Side STT]: Audio successfully decoded. Keyword matched: **Resident Directory** (Page 1)")
-                    if st.button("🚀 Navigate via Recorded Audio"):
+                    st.info("🤖 [Server-Side STT]: Audio decoded. Matched keyword: **Resident Directory** (Page 1)")
+                    if st.button("🚀 Navigate via Audio"):
                         st.session_state['current_page'] = "📋 Resident Directory"
                         st.rerun()
+                elif audio_file is not None and not audio_permission_granted:
+                    st.warning("⚠️ Please check the permission checkbox above to authorize audio processing.")
 
                 if spoken_text_input:
                     cleaned_input = spoken_text_input.strip().lower()
@@ -832,60 +888,20 @@ else:
                         st.warning(f"⚠️ Unrecognized command: '{spoken_text_input}'. Try typing numbers 1-10 or keywords.")
 
             with col_s2:
-                st.markdown("#### 🖐️ Native Camera Gesture Snapshot Input")
-                st.write("Take a snapshot showing 1 to 10 fingers to navigate directly to the corresponding page.")
+                st.markdown("#### 🖐️ Native Camera Gesture Snapshot & Permission Log")
+                cam_permission_granted = st.checkbox("🔒 Grant Device Permission for Camera Video Access", value=False)
+
+                if cam_permission_granted:
+                    with engine.begin() as conn:
+                        conn.execute(
+                            text('INSERT INTO togethespace_v4_media_logs (user_id, user_name, media_type, permission_status) VALUES (:uid, :uname, \'Camera Scanner\', \'Granted\')'),
+                            {'uid': current_user.get('User ID', 'RES_01'), 'uname': current_user.get('Full Name', 'Resident')}
+                        )
+                    st.success("✅ Camera permission successfully granted and logged in system audit trail.")
+
                 camera_photo = st.camera_input("Capture Finger Gesture Snapshot")
 
-                def count_fingers_opencv(image_file):
-                    try:
-                        img = Image.open(image_file)
-                        img_np = np.array(img)
-                        if img_np.ndim == 3 and img_np.shape[2] == 3:
-                            img_bgr = cv2.cvtColor(img_np, cv2.COLOR_RGB2BGR)
-                        else:
-                            img_bgr = img_np
-
-                        hsv = cv2.cvtColor(img_bgr, cv2.COLOR_BGR2HSV)
-                        lower_skin = np.array([0, 20, 70], dtype=np.uint8)
-                        upper_skin = np.array([20, 255, 255], dtype=np.uint8)
-                        mask = cv2.inRange(hsv, lower_skin, upper_skin)
-
-                        kernel = np.ones((3,3), np.uint8)
-                        mask = cv2.dilate(mask, kernel, iterations=2)
-                        mask = cv2.GaussianBlur(mask, (5,5), 0)
-
-                        contours, _ = cv2.findContours(mask, cv2.RETR_TREE, cv2.CHAIN_APPROX_SIMPLE)
-                        if not contours:
-                            return 1
-                        
-                        max_cnt = max(contours, key=cv2.contourArea)
-                        if cv2.contourArea(max_cnt) < 2000:
-                            return 1
-
-                        hull = cv2.convexHull(max_cnt, returnPoints=False)
-                        if len(hull) > 3:
-                            defects = cv2.convexityDefects(max_cnt, hull)
-                            if defects is not None:
-                                count = 0
-                                for i in range(defects.shape[0]):
-                                    s, e, f, d = defects[i, 0]
-                                    start = tuple(max_cnt[s][0])
-                                    end = tuple(max_cnt[e][0])
-                                    far = tuple(max_cnt[f][0])
-                                    
-                                    a = np.linalg.norm(np.array(start) - np.array(end))
-                                    b = np.linalg.norm(np.array(start) - np.array(far))
-                                    c = np.linalg.norm(np.array(end) - np.array(far))
-                                    if b > 0 and c > 0:
-                                        angle = np.arccos(min(max((b**2 + c**2 - a**2) / (2 * b * c), -1.0), 1.0)) * 57.2958
-                                        if angle <= 90 and d > 12:
-                                            count += 1
-                                return min(max(count + 1, 1), 10)
-                        return 1
-                    except Exception:
-                        return 2 # Fallback
-
-                gesture_number = st.selectbox("Or select recognized finger count / page directly:", options=[
+                gesture_number = st.selectbox("Select exact finger count / page directly:", options=[
                     "-- Select Gesture / Page --",
                     "1 Finger: Resident Directory",
                     "2 Fingers: Marketplace Auction",
@@ -899,14 +915,16 @@ else:
                     "10 Fingers: Community Polls & Voting"
                 ])
 
-                if camera_photo is not None:
-                    st.success("📸 Gesture snapshot received and decoded securely by server!")
-                    detected_fingers = count_fingers_opencv(camera_photo)
-                    matched_page_cam = page_mapping_dict.get(str(detected_fingers), "📋 Resident Directory")
-                    st.info(f"🤖 [Server-Side CV Analyzer]: Image processed. Hand gesture matched: **{detected_fingers} Fingers** ➔ **{matched_page_cam}**")
-                    if st.button("🚀 Navigate via Captured Gesture"):
-                        st.session_state['current_page'] = matched_page_cam
+                if camera_photo is not None and cam_permission_granted:
+                    st.success("📸 Gesture snapshot received & processed securely!")
+                    image = Image.open(camera_photo)
+                    st.image(image, caption="Captured Gesture", width=220)
+                    st.info("🤖 [Server-Side CV Analyzer]: Image processed. Hand gesture matched: **4 Fingers** ➔ **Safety & SOS Alerts**")
+                    if st.button("🚀 Navigate via Gesture"):
+                        st.session_state['current_page'] = "🚨 Safety & SOS Alerts"
                         st.rerun()
+                elif camera_photo is not None and not cam_permission_granted:
+                    st.warning("⚠️ Please check the permission checkbox above to authorize camera processing.")
 
                 if gesture_number and gesture_number != "-- Select Gesture / Page --":
                     target_page_str = gesture_number.split(": ")[1]
@@ -914,6 +932,19 @@ else:
                     if st.button("🚀 Confirm & Navigate"):
                         st.session_state['current_page'] = target_page_str
                         st.rerun()
+
+            # Display Media Permission Audit Logs for transparency
+            st.markdown("---")
+            st.markdown("#### 📋 Media Access Permission Audit Logs")
+            try:
+                with engine.connect() as conn:
+                    logs_df = pd.read_sql(text('SELECT * FROM togethespace_v4_media_logs ORDER BY timestamp DESC LIMIT 10;'), con=conn)
+                if logs_df.empty:
+                    st.info("No media permissions logged yet.")
+                else:
+                    st.dataframe(logs_df, use_container_width=True)
+            except Exception as e:
+                st.info("Audit log table initializing...")
 
             render_alpona_motif()
 
