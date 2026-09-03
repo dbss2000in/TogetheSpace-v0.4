@@ -623,7 +623,7 @@ else:
         # --- CURRENT USER CONTEXT ---
         current_user = st.session_state['user_record']
         user_block = current_user.get('Organization', 'General')
-        is_master = st.session_state.get('is_admin_session') and st.session_state.get('admin_preselected_role'] == 'Master Admin'
+        is_master = st.session_state.get('is_admin_session') and st.session_state.get['admin_preselected_role'] == 'Master Admin'
         is_admin_user = st.session_state.get('is_admin_session', False)
 
         # Helper for Avatar HTML rendering
