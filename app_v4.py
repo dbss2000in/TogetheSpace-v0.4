@@ -13,7 +13,7 @@ st.set_page_config(
     layout='wide',
 )
 
-# --- BENGAL HERITAGE, VINTAGE 1960S/70S GRAFFITI & TYPOGRAPHY STYLING ---
+# --- BENGAL HERITAGE, VINTAGE 1960S/70S GRAFFITI, ALPONA & TYPOGRAPHY STYLING ---
 st.markdown("""
     <style>
     @import url('https://fonts.googleapis.com/css2?family=Caveat:wght@600&family=Playfair+Display:ital,wght@0,600;0,700;1,400&family=Poppins:wght@400;500;600;700&family=Fira+Code:wght@400;500&display=swap');
@@ -42,7 +42,7 @@ st.markdown("""
         color: #8b0000 !important;
     }
 
-    /* Vintage 1960s/70s Bengal Heritage Graffiti Frame */
+    /* Vintage 1960s/70s Bengal Heritage Graffiti & Alpona Frame */
     .heritage-banner {
         background: linear-gradient(135deg, #fdf6ec 0%, #f4e8d8 100%);
         border: 3px double #8b0000;
@@ -51,19 +51,21 @@ st.markdown("""
         margin-bottom: 20px;
         box-shadow: 0 4px 15px rgba(139, 0, 0, 0.2);
         text-align: center;
+        background-image: radial-gradient(#d4b595 1px, transparent 1px);
+        background-size: 20px 20px;
     }
 
-    .heritage-quote {
+    .heritage-alpona-card {
         background-color: #fcf8f2;
-        border-left: 6px solid #8b0000;
-        border-right: 1px solid #e2d2c0;
-        border-top: 1px solid #e2d2c0;
-        border-bottom: 1px solid #e2d2c0;
-        border-radius: 8px;
+        border: 2px dashed #8b0000;
+        border-radius: 10px;
         padding: 14px 18px;
-        margin-bottom: 15px;
-        font-style: italic;
-        color: #2b1810 !important;
+        margin: 15px 0;
+        text-align: center;
+        font-family: 'Caveat', cursive;
+        font-size: 1.4em;
+        color: #5c0000;
+        box-shadow: 0 2px 8px rgba(139, 0, 0, 0.08);
     }
 
     code, pre {
@@ -481,8 +483,8 @@ else:
             st.markdown("""
                 <div class="login-container">
                     <div class="heritage-banner" style="margin-bottom: 15px; padding: 10px;">
-                        <p class="artisan-title" style="font-size: 1.6em; margin: 0;">শুদ্ধ সংস্কৃতি ও সুরক্ষা</p>
-                        <p style="font-size: 0.8em; color: #444; margin: 0;">TogetheSpace v0.4 — Heritage Edition</p>
+                        <p class="artisan-title" style="font-size: 1.6em; margin: 0;">বিনম্র শ্রদ্ধार्ঘ্য : শ্রীশ্রীরামকৃষ্ণপরমহংসদেব ও শ্রীশ্রীমা সারদাদেবী</p>
+                        <p style="font-size: 0.85em; color: #2e5a27; margin: 0;">TogetheSpace v0.4 — Heritage Edition</p>
                     </div>
                     <h2 style="color: #0d47a1; text-align: center; margin-bottom: 10px;">🔒 Secure Access Portal</h2>
                     <p style="text-align: center; color: #1a1a1a; font-size: 0.95em;">
@@ -640,16 +642,24 @@ else:
             except Exception:
                 return default_val
 
+        # Helper for Bengal Alpona & Graffiti Motif Cards in Blank Spaces
+        def render_alpona_motif():
+            st.markdown("""
+                <div class="heritage-alpona-card">
+                    🪷 আল্পনা ও লোকশিল্প: ১৯ শতকের বাংলার আবহমান ঐতিহ্য ও সংস্কৃতির স্পর্শ 🪷
+                </div>
+            """, unsafe_allow_html=True)
+
         # --- HERITAGE WELCOME BANNER DISPLAYED ON LANDING ---
         st.markdown("""
             <div class="heritage-banner">
-                <p class="artisan-title" style="margin: 0; font-size: 2.4em;">বিনাম্র শ্রদ্ধार्ঘ্য: শ্রী শ্রী রামকৃষ্ণ পরমহংসদেব ও শ্রী শ্রী মা সারদা দেবী</p>
-                <p style="font-size: 0.95em; color: #2e5a27; margin-top: 5px; font-weight: 600;">
-                    বাংলার আবহমান সংস্কৃতি, ঐতিহ্য ও আত্মিক ঐক্যের ডিজিটাল অঙ্গন — TogetheSpace v0.4 (Heritage Edition)
+                <p class="artisan-title" style="margin: 0; font-size: 2.2em;">বিনম্র শ্রদ্ধार्ঘ্য : শ্রীশ্রীরামকৃষ্ণপরমহংসদেব ও শ্রীশ্রীমা সারদাদেবী</p>
+                <p style="font-size: 1.05em; color: #2e5a27; margin-top: 5px; font-weight: 600;">
+                    বাংলার আবহমান সংস্কৃতি, ঐতিহ্য ও আত্মিক ঐক্যের ডিজিটাল অঙ্গন — একসাথে - TogetheSpace
                 </p>
-                <div style="margin-top: 12px; display: flex; justify-content: center; gap: 15px; font-size: 0.85em; font-style: italic; color: #5c0000;">
+                <div style="margin-top: 10px; display: flex; justify-content: center; gap: 15px; font-size: 0.85em; font-style: italic; color: #5c0000;">
                     <span>✦ ১৯ শতকের বাংলার লোকশিল্প ও গ্রাফিতি মোটিফ ✦</span>
-                    <span>✦ শ্রী রামকৃষ্ণ ও মা সারদার আদর্শে অনুপ্রাণিত ✦</span>
+                    <span>✦ শ্রী রামকৃষ্ণ ও মা সারদার আদর্শে সতত ধাবমান ✦</span>
                 </div>
             </div>
         """, unsafe_allow_html=True)
@@ -764,6 +774,7 @@ else:
                 ]
             }
             st.dataframe(pd.DataFrame(facility_index_data), use_container_width=True)
+            render_alpona_motif()
 
         # 0.1 SIGN LANGUAGE & VOICE HUB (Feature 3)
         elif menu_selection == "🎙️ Sign Language & Voice Hub":
@@ -796,6 +807,7 @@ else:
                 """)
                 if st.button("📷 Enable Camera Finger-Gesture Scanner"):
                     st.info("📷 Camera active. Show your fingers to navigate instantly.")
+            render_alpona_motif()
 
         # 1. RESIDENT DIRECTORY
         elif menu_selection == "📋 Resident Directory":
@@ -897,6 +909,7 @@ else:
                         """, unsafe_allow_html=True)
             except Exception as e:
                 st.warning(f'Directory loading failed: {e}')
+            render_alpona_motif()
 
         # 2. COMMUNICATION & FEED
         elif menu_selection == "🏡 Communication & Feed":
@@ -1053,6 +1066,7 @@ else:
                         """, unsafe_allow_html=True)
                 except Exception as e:
                     st.warning(f'Notices error: {e}')
+            render_alpona_motif()
 
         # 3. MEDIA CORNER
         elif menu_selection == "🎥 Media Corner":
@@ -1096,6 +1110,7 @@ else:
                         """, unsafe_allow_html=True)
             except Exception as e:
                 st.warning(f"Error loading media corner: {e}")
+            render_alpona_motif()
 
         # 4. DONATION & GIVE-AWAY
         elif menu_selection == "🤝 Donation & Give-Away":
@@ -1148,6 +1163,7 @@ else:
                                 st.rerun()
             except Exception as e:
                 st.warning(f"Error loading donations: {e}")
+            render_alpona_motif()
 
         # 5. ADMIN THANKS & SUPPORT
         elif menu_selection == "💖 Admin Thanks & Support":
@@ -1193,6 +1209,7 @@ else:
                         """, unsafe_allow_html=True)
             except Exception as e:
                 st.warning(f"Error loading thanks wall: {e}")
+            render_alpona_motif()
 
         # 6. WEST BENGAL MARKET RATES (AI)
         elif menu_selection == "📈 West Bengal Market Rates (AI)":
@@ -1223,6 +1240,7 @@ else:
 
             st.dataframe(pd.DataFrame(current_market_data), use_container_width=True)
             st.caption("🤖 *AI Algorithmically parsed from regional wholesale and retail mandi indices across Bengal via Gemini AI Sync.*")
+            render_alpona_motif()
 
         # 7. AI TOP NEWS CORNER
         elif menu_selection == "📰 AI Top News Corner":
@@ -1253,6 +1271,7 @@ else:
                         <p style="color: #111111; font-size: 1.05em; line-height: 1.6;">{item['summary']}</p>
                     </div>
                 """, unsafe_allow_html=True)
+            render_alpona_motif()
 
         # 8. AI WEEKLY LEARNING CORNER
         elif menu_selection == "🎓 AI Weekly Learning Corner":
@@ -1331,6 +1350,7 @@ else:
                             st.success(f"🎉 Exam evaluated by AI! Passed with 96% score. Your official weekly certificate for **{course_choice}** has been issued!")
                         else:
                             st.warning("Please complete the exam questions.")
+            render_alpona_motif()
 
         # 9. CLASSIFIEDS & MARKETPLACE (Live Auction / Bidding System)
         elif menu_selection == "🛒 Classifieds & Marketplace (Auction)":
@@ -1397,6 +1417,7 @@ else:
                                     st.warning(f"Bid must be strictly higher than current highest bid of ₹{current_highest}.")
             except Exception as e:
                 st.warning(f"Error loading marketplace: {e}")
+            render_alpona_motif()
 
         # 10. JOB MATCH & EMPLOYMENT DIRECTORY
         elif menu_selection == "👔 Job Match & Employment Directory":
@@ -1475,6 +1496,7 @@ else:
                                     st.success(f"Offer of ₹{wage_offer}/day submitted to {hrow['Full Name']}! You can connect directly via directory phone number.")
                 except Exception as e:
                     st.warning(f"Error loading hirers: {e}")
+            render_alpona_motif()
 
         # 11. PERSONALIZED MASS EVENT INVITATIONS
         elif menu_selection == "✉️ Personalized Event Invitations":
@@ -1529,6 +1551,7 @@ else:
                         """, unsafe_allow_html=True)
             except Exception as e:
                 st.warning(f"Error loading invitations: {e}")
+            render_alpona_motif()
 
         # 12. HELPDESK & TICKETS
         elif menu_selection == "🛠️ Helpdesk & Tickets":
@@ -1585,6 +1608,7 @@ else:
                                     st.rerun()
             except Exception as e:
                 st.warning(f"Error loading helpdesk: {e}")
+            render_alpona_motif()
 
         # 13. FACILITY BOOKING & PUBLIC UTILITIES DIRECTORY
         elif menu_selection == "📅 Facility Booking & Utilities":
@@ -1608,6 +1632,7 @@ else:
                         <p>🔗 <b>Official Portal / Booking Link:</b> <a href="{u['url']}" target="_blank">{u['url']}</a></p>
                     </div>
                 """, unsafe_allow_html=True)
+            render_alpona_motif()
 
         # 14. SAFETY & SOS ALERTS
         elif menu_selection == "🚨 Safety & SOS Alerts":
@@ -1615,6 +1640,7 @@ else:
             st.error("⚠️ EMERGENCY SOS: Instant escalation to all Block Admins and Master Admin. Bypasses standard bottlenecks during critical life-safety events.")
             if st.button("🚨 TRIGGER EMERGENCY SOS", type="primary"):
                 st.error("🚨 EMERGENCY SOS BROADCASTED TO ALL BLOCK & MASTER ADMINS!")
+            render_alpona_motif()
 
         # 15. COMMUNITY POLLS & VOTING
         elif menu_selection == "📊 Community Polls & Voting":
@@ -1640,6 +1666,7 @@ else:
                     <button style="background:#b71c1c; color:white; border:none; padding:6px 14px; border-radius:6px; font-weight:600; margin-left:8px;">Vote: No</button>
                 </div>
             """, unsafe_allow_html=True)
+            render_alpona_motif()
 
         # 16. LOCAL ATTRACTIONS & EVENTS
         elif menu_selection == "🌟 Local Attractions & Events":
@@ -1673,8 +1700,9 @@ else:
                     a_desc = st.text_area("Description & Highlights")
                     if st.form_submit_button("Submit for Sub-Admin Verification"):
                         st.success("Submitted successfully! Pending Sub-Admin pre-screening approval.")
+            render_alpona_motif()
 
-        # 17. COMMUNITY ADMIN PORTAL (Master Admin Unrestricted Overrides & Cooldown Bypass)
+        # 17. COMMUNITY ADMIN PORTAL
         elif menu_selection == "🔐 Community Admin Portal":
             st.markdown('### 🔐 Administrator Portal')
             
