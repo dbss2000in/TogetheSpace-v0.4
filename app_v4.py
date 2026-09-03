@@ -13,7 +13,7 @@ st.set_page_config(
     layout='wide',
 )
 
-# --- BENGAL HERITAGE & ARTISAN TYPOGRAPHY STYLING ---
+# --- BENGAL HERITAGE, VINTAGE 1960S/70S GRAFFITI & TYPOGRAPHY STYLING ---
 st.markdown("""
     <style>
     @import url('https://fonts.googleapis.com/css2?family=Caveat:wght@600&family=Playfair+Display:ital,wght@0,600;0,700;1,400&family=Poppins:wght@400;500;600;700&family=Fira+Code:wght@400;500&display=swap');
@@ -25,7 +25,7 @@ st.markdown("""
     }
     
     h1, h2, h3, h4, h5, h6 {
-        color: #1b3b1a !important;
+        color: #2b1810 !important;
         font-family: 'Playfair Display', serif;
         font-weight: 700;
     }
@@ -42,14 +42,28 @@ st.markdown("""
         color: #8b0000 !important;
     }
 
+    /* Vintage 1960s/70s Bengal Heritage Graffiti Frame */
     .heritage-banner {
-        background: linear-gradient(135deg, #fdfbf7 0%, #eef5ed 100%);
-        border: 2px solid #2e5a27;
+        background: linear-gradient(135deg, #fdf6ec 0%, #f4e8d8 100%);
+        border: 3px double #8b0000;
         border-radius: 12px;
-        padding: 20px;
+        padding: 22px;
         margin-bottom: 20px;
-        box-shadow: 0 4px 12px rgba(46, 90, 39, 0.15);
+        box-shadow: 0 4px 15px rgba(139, 0, 0, 0.2);
         text-align: center;
+    }
+
+    .heritage-quote {
+        background-color: #fcf8f2;
+        border-left: 6px solid #8b0000;
+        border-right: 1px solid #e2d2c0;
+        border-top: 1px solid #e2d2c0;
+        border-bottom: 1px solid #e2d2c0;
+        border-radius: 8px;
+        padding: 14px 18px;
+        margin-bottom: 15px;
+        font-style: italic;
+        color: #2b1810 !important;
     }
 
     code, pre {
@@ -101,25 +115,25 @@ st.markdown("""
         border-top: 6px solid #8b0000;
     }
     .sidebar-profile {
-        background-color: #eaf4ed;
-        border: 1px solid #a5d6a7;
+        background-color: #fdf6ec;
+        border: 1px solid #d4b595;
         border-radius: 8px;
         padding: 14px;
         margin-bottom: 15px;
     }
     div.stButton > button {
-        background-color: rgba(46, 139, 87, 0.12);
-        color: #0f3812;
-        border: 1px solid rgba(46, 139, 87, 0.4);
+        background-color: rgba(139, 0, 0, 0.08);
+        color: #5c0000;
+        border: 1px solid rgba(139, 0, 0, 0.3);
         border-radius: 8px;
         font-weight: 600;
         font-family: 'Poppins', sans-serif;
         transition: all 0.2s ease;
     }
     div.stButton > button:hover {
-        background-color: rgba(46, 139, 87, 0.25);
-        border-color: rgba(46, 139, 87, 0.7);
-        color: #051c07;
+        background-color: rgba(139, 0, 0, 0.2);
+        border-color: rgba(139, 0, 0, 0.6);
+        color: #3b0000;
     }
     </style>
 """, unsafe_allow_html=True)
@@ -145,7 +159,7 @@ else:
     try:
         engine = get_db_engine(DATABASE_URL)
         
-        # CENTRALIZED DATABASE INITIALIZATION (Including Music Sync & Overrides)
+        # CENTRALIZED DATABASE INITIALIZATION
         with engine.begin() as conn:
             conn.execute(text('SELECT 1;'))
             
@@ -597,10 +611,26 @@ else:
         # --- HERITAGE WELCOME BANNER DISPLAYED ON LANDING ---
         st.markdown("""
             <div class="heritage-banner">
-                <p class="artisan-title" style="margin: 0; font-size: 2.4em;">বিনম্র শ্রদ্ধার্ঘ্য: শ্রী শ্রী রামকৃষ্ণ পরমহংসদেব ও শ্রী শ্রী মা সারদা দেবী</p>
+                <p class="artisan-title" style="margin: 0; font-size: 2.4em;">বিনাম্র শ্রদ্ধार्ঘ্য: শ্রী শ্রী রামকৃষ্ণ পরমহংসদেব ও শ্রী শ্রী মা সারদা দেবী</p>
                 <p style="font-size: 0.95em; color: #2e5a27; margin-top: 5px; font-weight: 600;">
                     বাংলার আবহমান সংস্কৃতি, ঐতিহ্য ও আত্মিক ঐক্যের ডিজিটাল অঙ্গন — TogetheSpace v0.4 (Heritage Edition)
                 </p>
+                <div style="margin-top: 12px; display: flex; justify-content: center; gap: 15px; font-size: 0.85em; font-style: italic; color: #5c0000;">
+                    <span>✦ ১৯ শতকের বাংলার লোকশিল্প ও গ্রাফিতি মোটিফ ✦</span>
+                    <span>✦ শ্রী রামকৃষ্ণ ও মা সারদার আদর্শে অনুপ্রাণিত ✦</span>
+                </div>
+            </div>
+        """, unsafe_allow_html=True)
+
+        # --- WEEKLY GEMINI AMBIENT MUSIC PLAYER INTEGRATION (Feature 5) ---
+        music_url = get_override_content(f"weekly_music_{user_block}", "https://www.soundhelix.com/examples/mp3/SoundHelix-Song-1.mp3")
+        st.sidebar.markdown("""
+            <div style="background-color: #fdf6ec; border: 1px solid #d4b595; border-radius: 8px; padding: 10px; margin-bottom: 12px; text-align: center;">
+                <p style="font-size: 0.8em; font-weight: 600; color: #8b0000; margin-bottom: 4px;">🎵 Weekly Heritage Ambient Music (Gemini AI)</p>
+                <audio controls autoplay loop style="width: 100%; height: 32px;">
+                    <source src=""" + music_url + """ type="audio/mp3">
+                    Your browser does not support audio element.
+                </audio>
             </div>
         """, unsafe_allow_html=True)
 
@@ -701,10 +731,10 @@ else:
 
         # --- ROUTING BASED ON PUSH BUTTON SELECTION ---
 
-        # 0. FACILITY & SERVICE INDEX (New Feature 1)
+        # 0. FACILITY & SERVICE INDEX (Feature 1)
         if menu_selection == "🧭 Facility & Service Index":
             st.markdown("### 🧭 Master Facility & Service Index")
-            st.info("A concise directory mapping community facilities to their specific available services for residents.")
+            st.info("A concise master directory mapping each community facility to its corresponding available service.")
 
             facility_index_data = {
                 "Facility Name": [
@@ -734,7 +764,7 @@ else:
             }
             st.dataframe(pd.DataFrame(facility_index_data), use_container_width=True)
 
-        # 0.1 SIGN LANGUAGE & VOICE HUB (New Feature 3)
+        # 0.1 SIGN LANGUAGE & VOICE HUB (Feature 3)
         elif menu_selection == "🎙️ Sign Language & Voice Hub":
             st.markdown("### 🎙️ Sign Language (Finger Gesture) & Voice Command Hub")
             st.info("Accessibility hub for residents who cannot type. Use browser voice dictation or app-specific finger-count gestures to navigate effortlessly.")
@@ -744,10 +774,9 @@ else:
                 st.markdown("#### 🗣️ Voice Command Navigation")
                 st.write("Click below to activate voice command input. Speak clearly to dictate messages or trigger navigation.")
                 
-                # Embedded browser speech recognition simulator component
                 st.markdown("""
-                    <div style="background: #eaf4ed; padding: 15px; border-radius: 8px; border: 1px solid #1b5e20;">
-                        <p style="font-weight: 600; color: #1b5e20;">🎤 Voice Input Active</p>
+                    <div style="background: #fdf6ec; padding: 15px; border-radius: 8px; border: 1px solid #8b0000;">
+                        <p style="font-weight: 600; color: #8b0000;">🎤 Voice Input Active</p>
                         <p style="font-size: 0.9em;">Say commands like: <i>"Open Directory"</i>, <i>"Open Marketplace"</i>, or dictate chat messages.</p>
                     </div>
                 """, unsafe_allow_html=True)
@@ -1644,7 +1673,7 @@ else:
                     if st.form_submit_button("Submit for Sub-Admin Verification"):
                         st.success("Submitted successfully! Pending Sub-Admin pre-screening approval.")
 
-        # 17. COMMUNITY ADMIN PORTAL (With 24h Gemini Sync & Weekly Music Generator - New Feature 5)
+        # 17. COMMUNITY ADMIN PORTAL
         elif menu_selection == "🔐 Community Admin Portal":
             st.markdown('### 🔐 Administrator Portal')
             
@@ -1789,7 +1818,7 @@ else:
                             except Exception as e:
                                 st.error(f"Sync failed: {e}")
 
-                # 4. WEEKLY GEMINI MUSIC GENERATOR (New Feature 5 - Restricted to once a week)
+                # 4. WEEKLY GEMINI MUSIC GENERATOR (Restricted to once a week)
                 elif admin_action == '🎵 Weekly Gemini Music Generator':
                     st.markdown('#### 🎵 Gemini AI Weekly Ambient Music Generator')
                     st.info('Clicking this switch commands Gemini AI to generate and update the community background ambient music tone and theme across the app. **(Restricted to once per week per admin/block)**.')
