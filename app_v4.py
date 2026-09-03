@@ -499,8 +499,9 @@ else:
             st.markdown("""
                 <div class="login-container">
                     <div class="heritage-banner" style="margin-bottom: 15px; padding: 10px;">
-                        <p class="artisan-title" style="font-size: 1.5em; margin: 0;">বিনম্র শ্রদ্ধार्ঘ্য : শ্রীশ্রীরামকৃষ্ণপরমহংসদেব ও শ্রীশ্রীমা সারদাদেবী</p>
-                        <p style="font-size: 0.8em; color: #2e5a27; margin: 0;">TogetheSpace v0.4 — Heritage Edition</p>
+                        <p class="artisan-title" style="font-size: 1.4em; margin: 0;">শ্রীশ্রীরামকৃষ্ণপরমহংসদেব ও শ্রীশ্রীমা সারদাদেবীর পদপ্রান্তে বিনম্র শ্রদ্ধার্ঘ্য :</p>
+                        <p style="font-size: 0.85em; color: #2e5a27; margin: 0;">অঙ্গন — একসাথে - The TogetheSpace</p>
+                        <p style="font-size: 0.75em; color: #5c0000; margin-top: 4px;">✦ শ্রী রামকৃষ্ণ ও মা সারদার আদর্শে সতত ধাবমান ✦</p>
                     </div>
                     <h2 style="color: #0d47a1; text-align: center; margin-bottom: 10px;">🔒 Secure Access Portal</h2>
                     <p style="text-align: center; color: #1a1a1a; font-size: 0.95em;">
@@ -649,7 +650,7 @@ else:
         avatars_map = get_avatars_map()
         avatars_map[current_user.get('Full Name')] = current_user.get('Avatar', '')
 
-        # Helper to fetch admin/Gemini overrides (DEFINED BEFORE USE)
+        # Helper to fetch admin/Gemini overrides
         def get_override_content(key, default_val):
             try:
                 with engine.connect() as conn:
@@ -666,15 +667,14 @@ else:
                 </div>
             """, unsafe_allow_html=True)
 
-        # --- HERITAGE WELCOME BANNER DISPLAYED ON LANDING ---
+        # --- HERITAGE WELCOME BANNER DISPLAYED ON LANDING (Exact User Requested Wording) ---
         st.markdown("""
             <div class="heritage-banner">
-                <p class="artisan-title" style="margin: 0; font-size: 2.2em;">বিনম্র শ্রদ্ধार्ঘ্য : শ্রীশ্রীরামকৃষ্ণপরমহংসদেব ও শ্রীশ্রীমা সারদাদেবী</p>
-                <p style="font-size: 1.05em; color: #2e5a27; margin-top: 5px; font-weight: 600;">
-                    বাংলার আবহমান সংস্কৃতি, ঐতিহ্য ও আত্মিক ঐক্যের ডিজিটাল অঙ্গন — একসাথে - TogetheSpace
+                <p class="artisan-title" style="margin: 0; font-size: 2.1em;">শ্রীশ্রীরামকৃষ্ণপরমহংসদেব ও শ্রীশ্রীমা সারদাদেবীর পদপ্রান্তে বিনম্র শ্রদ্ধার্ঘ্য :</p>
+                <p style="font-size: 1.15em; color: #2e5a27; margin-top: 6px; font-weight: 700;">
+                    অঙ্গন — একসাথে - The TogetheSpace
                 </p>
-                <div style="margin-top: 10px; display: flex; justify-content: center; gap: 15px; font-size: 0.85em; font-style: italic; color: #5c0000;">
-                    <span>✦ ১৯ শতকের বাংলার লোকশিল্প ও গ্রাফিতি মোটিফ ✦</span>
+                <div style="margin-top: 10px; display: flex; justify-content: center; gap: 15px; font-size: 0.9em; font-style: italic; color: #5c0000;">
                     <span>✦ শ্রী রামকৃষ্ণ ও মা সারদার আদর্শে সতত ধাবমান ✦</span>
                 </div>
             </div>
@@ -744,7 +744,6 @@ else:
             for btn_label in nav_buttons:
                 if st.button(btn_label, use_container_width=True):
                     st.session_state['current_page'] = btn_label
-                    # Automatically trigger rerun which collapses sidebar on mobile layouts
                     st.rerun()
 
             st.markdown("---")
@@ -792,7 +791,7 @@ else:
             st.dataframe(pd.DataFrame(facility_index_data), use_container_width=True)
             render_alpona_motif()
 
-        # 0.1 SIGN LANGUAGE & VOICE HUB (Fully Functional Web Speech & MediaPipe Hands Integration)
+        # 0.1 SIGN LANGUAGE & VOICE HUB (Fully Functional Web Speech & MediaPipe Hands with allow permissions)
         elif menu_selection == "🎙️ Sign Language & Voice Hub":
             st.markdown("### 🎙️ Sign Language (Finger Gesture) & Voice Command Hub")
             st.info("Accessibility hub for residents who cannot type. Use browser voice dictation or app-specific finger-count gestures to navigate effortlessly.")
@@ -802,7 +801,6 @@ else:
                 st.markdown("#### 🗣️ Fully Functional Voice Command Navigation")
                 st.write("Click 'Start Listening', speak clearly (e.g. 'Directory', 'Marketplace', 'Learning', 'Admin', 'SOS'), and watch the app navigate instantly.")
                 
-                # Interactive Web Speech API HTML Component with URL query param navigation
                 voice_html = """
                 <div style="background: #fdf6ec; padding: 18px; border-radius: 10px; border: 2px solid #8b0000; text-align: center;">
                     <p style="font-weight: 700; color: #8b0000; font-size: 1.1em;" id="voice-status">🎤 Voice Command Ready</p>
@@ -836,20 +834,24 @@ else:
                       statusEl.innerText = "✅ Command recognized! Navigating...";
 
                       setTimeout(() => {
+                        let target = "";
                         if (text.includes('directory') || text.includes('residents')) {
-                          window.parent.location.search = '?page=' + encodeURIComponent('📋 Resident Directory');
+                          target = '📋 Resident Directory';
                         } else if (text.includes('market') || text.includes('rates')) {
-                          window.parent.location.search = '?page=' + encodeURIComponent('📈 West Bengal Market Rates (AI)');
+                          target = '📈 West Bengal Market Rates (AI)';
                         } else if (text.includes('news')) {
-                          window.parent.location.search = '?page=' + encodeURIComponent('📰 AI Top News Corner');
+                          target = '📰 AI Top News Corner';
                         } else if (text.includes('learning') || text.includes('course')) {
-                          window.parent.location.search = '?page=' + encodeURIComponent('🎓 AI Weekly Learning Corner');
+                          target = '🎓 AI Weekly Learning Corner';
                         } else if (text.includes('admin') || text.includes('portal')) {
-                          window.parent.location.search = '?page=' + encodeURIComponent('🔐 Community Admin Portal');
+                          target = '🔐 Community Admin Portal';
                         } else if (text.includes('sos') || text.includes('emergency')) {
-                          window.parent.location.search = '?page=' + encodeURIComponent('🚨 Safety & SOS Alerts');
+                          target = '🚨 Safety & SOS Alerts';
+                        }
+                        if (target) {
+                          window.parent.location.href = window.parent.location.origin + window.parent.location.pathname + '?page=' + encodeURIComponent(target);
                         } else {
-                          statusEl.innerText = "❓ Command not recognized: \"" + text + "\". Try saying 'Directory'";
+                          statusEl.innerText = "❓ Command not recognized: \"" + text + "\"";
                         }
                       }, 600);
                     };
@@ -860,7 +862,7 @@ else:
                   }
                 </script>
                 """
-                components.html(voice_html, height=180)
+                components.html(voice_html, height=180, allow="microphone")
 
             with col_v2:
                 st.markdown("#### 🖐️ Functional Camera Finger-Gesture Scanner")
@@ -873,7 +875,6 @@ else:
                     * **5 Fingers:** Community Admin Portal
                 """)
                 
-                # Interactive MediaPipe Hands Camera HTML Component with URL query param navigation
                 gesture_html = """
                 <div style="background: #eaf4ed; padding: 12px; border-radius: 10px; border: 2px solid #1b5e20; text-align: center;">
                     <video id="webcam" autoplay playsinline width="260" height="190" style="border-radius: 8px; transform: scaleX(-1); border: 1px solid #cbd5e1;"></video>
@@ -914,18 +915,17 @@ else:
                       statusElement.innerText = `Detected Fingers: ${count} 🖐️ (Navigating...)`;
                       
                       const now = Date.now();
-                      if (now - lastDetected > 1500) { // Throttle navigation to prevent rapid looping
+                      if (now - lastDetected > 2000) { 
                         lastDetected = now;
-                        if (count === 1) {
-                          window.parent.location.search = '?page=' + encodeURIComponent('📋 Resident Directory');
-                        } else if (count === 2) {
-                          window.parent.location.search = '?page=' + encodeURIComponent('🛒 Classifieds & Marketplace (Auction)');
-                        } else if (count === 3) {
-                          window.parent.location.search = '?page=' + encodeURIComponent('🎓 AI Weekly Learning Corner');
-                        } else if (count === 4) {
-                          window.parent.location.search = '?page=' + encodeURIComponent('🚨 Safety & SOS Alerts');
-                        } else if (count === 5) {
-                          window.parent.location.search = '?page=' + encodeURIComponent('🔐 Community Admin Portal');
+                        let target = "";
+                        if (count === 1) target = '📋 Resident Directory';
+                        else if (count === 2) target = '🛒 Classifieds & Marketplace (Auction)';
+                        else if (count === 3) target = '🎓 AI Weekly Learning Corner';
+                        else if (count === 4) target = '🚨 Safety & SOS Alerts';
+                        else if (count === 5) target = '🔐 Community Admin Portal';
+
+                        if (target) {
+                          window.parent.location.href = window.parent.location.origin + window.parent.location.pathname + '?page=' + encodeURIComponent(target);
                         }
                       }
                     } else {
@@ -953,7 +953,7 @@ else:
                   };
                 </script>
                 """
-                components.html(gesture_html, height=270)
+                components.html(gesture_html, height=270, allow="camera")
             render_alpona_motif()
 
         # 1. RESIDENT DIRECTORY
@@ -2619,7 +2619,7 @@ else:
                                 label=f"📥 Download {admin_block} Credentials CSV",
                                 data=csv_data,
                                 file_name=f"togethespace_credentials_{admin_block.lower().replace('_', '_')}.csv",
-                                mime="text/csv",
+                                mime="text/css",
                                 use_container_width=True
                             )
                     except Exception as e:
